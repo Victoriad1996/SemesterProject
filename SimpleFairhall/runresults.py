@@ -5,6 +5,7 @@ neuron_idx = 50
 my_indicies = some_indices(neuron_idx)
 MPC = StateMonitor(PC, 'v', record=my_indicies)
 MM = StateMonitor(PC, 'v', record=True)
+MG = StateMonitor(G, 'v', record=0)
 
 spikemon = SpikeMonitor(PC, variables='v', record=True)
 
