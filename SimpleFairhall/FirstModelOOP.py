@@ -21,7 +21,48 @@ class FirstModel:
     def _complete_parameters(self, p):
         genericParam = {
             'rows' : 20,
-            'cols' : 30
+            'cols' : 30,
+
+            # Excitatory neurons
+            "v_init_exc" : -60,         # Initial value of potential
+            "v_leak_exc" : -68,         # Leak potential
+            "v_reset_exc" : -60,        # Reset potential
+            "v_thr_exc" : -36,          # Spiking threshold
+            'tau_dyn_exc' : 50 * ms,    # Leak timescale
+            "tau_refr_exc" : 8 * ms,    # Refractory period
+            "r_max_exc" : 20 * Hz,      # Maximum rate
+            "lambda_PL_exc" : 0.15 * metre,    # ???
+
+            # Inhibitory neurons
+            "v_leak_inh" : -80,         # Leak potential
+            "v_reset_inh": -80,         # Reset potential
+            "v_thr_inh" : -50,          # Spiking threshold
+            'tau_dyn_inh': 5 * ms,      # Leak timescale
+            "tau_refr_inh" : 2 * ms,    # Refractory period
+            "gi_inh" : 1,               # ???
+
+            # Tonic Neurons
+            "v_reset_tonic" : -80,        # Leak potential
+            "v_leak_tonic" : -80,         # Reset potential
+            "v_thr_tonic" : -50,          # Spiking threshold
+            'tau_dyn_tonic': 5 * ms,      # Leak timescale
+            "tau_refr_tonic" : 2 * ms,    # Refractory period
+            "gi_tonic" : 1,               # ???
+
+            # External Input Neurons
+            "v_reset_ext": -80,  # Leak potential
+            "v_leak_ext": -80,  # Reset potential
+            "v_thr_ext": -50,  # Spiking threshold
+            'tau_dyn_ext': 5 * ms,  # Leak timescale
+            "tau_refr_ext": 2 * ms,  # Refractory period
+            "gi_ext": 1,  # ???
+
+            # Synapses
+            "w_PC" : 0.5,           # Recurrent weight from PC to PC
+            "w_PCINH" : 0.7,        # Weight PC to INH
+            "w_INHPC" : 0.5,        # Weight INH to PC
+            "w_GPC" : 0.9,          # Weight G to PC
+            "w_SPC" : 0.8           # Weigth S to PC
         }
 
         pnew = {}
@@ -40,110 +81,75 @@ class FirstModel:
 
     # Initialises the pyramidal neurons as a Brian2 NeuronGroup.
     def _init_pyramidal_neurons(self):
-        el = -68
-        ee = -60
-        #Spiking threshold
-        vth_e = -36
-        tr_e = 8 * ms
-        #Maximum rate
-        r_max = 20 * Hz
-        ie = 65
-        lambda_PL = 0.15 * metre
-
         eqs_exc = '''
-            dv/dt = (I -(v-el) +ie)/tau : 1
+            dv/dt = (I - (v - v_leak_exc)) / tau : 1
             x : metre
             y : metre
             tau : second
             I : 1
             '''
 
-        self.PC = NeuronGroup(self.p['rows'] * self.p['cols'], eqs_exc, threshold='v>vth_e', reset='v = ee', refractory=tr_e, method='euler')
+        self.PC = NeuronGroup(self.p['rows'] * self.p['cols'], eqs_exc, threshold='v>v_thr_exc', reset='v = v_reset_exc', refractory=self.p["tau_refr_exc"], method='euler')
 
         # initialize the grid positions
         rows = self.p['rows']
         grid_dist = 4 * meter
-        self.PC.tau = '50*ms'
+        self.PC.tau = self.p['tau_dyn_exc']
         # x and y position on the grid of the cells.
         self.PC.x = '(i // rows) * grid_dist'
         self.PC.y = '(i % rows) * grid_dist'
         #Initialises voltage
-        self.PC.v = -60
+        self.PC.v = self.p['v_init_exc']
         self.PC.I = '0'
+
 
     # Initialises the inhibitory neurons as a Brian2 NeuronGroup.
     def _init_inhibitory_neurons(self):
-        ei = -80
-        #Spiking threshold
-        vth_i = -50
-        tr_i = 2 * ms
-        gi = 1
-
         eqs_inh = '''
-        dv/dt = (I-(v-ei) + ie)/tau : 1
+        dv/dt = (I - (v - v_leak_inh)) / tau : 1
         tau : second
         I : 1
         '''
 
-        self.INH = NeuronGroup(int(self.p['rows'] * self.p['cols'] / 10), eqs_inh, threshold='v>vth_i', reset='v = ei', refractory=tr_i,
-                          method='euler')
+        self.INH = NeuronGroup(int(self.p['rows'] * self.p['cols'] / 10), eqs_inh, threshold='v>v_thr_inh',
+                               reset='v = v_reset_inh', refractory=self.p['tau_refr_inh'], method='euler')
         self.INH.I = 0
-        self.INH.tau = 5 * ms
+        self.INH.tau = self.p['tau_dyn_inh']
 
 
     # Initialises tonic input that will "draw" the trajectory.
     def _init_tonic_input_neurons(self):
-        ei = -80
-        # Spiking threshold
-        vth_i = -50
-        tr_i = 2 * ms
-        gi = 1
-
         eqs_tonic = '''
-        dv/dt = (I-(v-ei) + ie)/tau : 1
+        dv/dt = (I - (v - v_leak_tonic)) / tau : 1
         tau : second
         I : 1
         '''
 
-        self.G = NeuronGroup(self.p['rows'], eqs_tonic, threshold='v>vth_i', reset='v = ei', refractory=tr_i, method='euler')
-        self.G.I = - 10
-        self.G.tau = 5 * ms
+        self.G = NeuronGroup(self.p['rows'], eqs_tonic, threshold='v > v_thr_tonic', reset='v = v_reset_tonic',
+                             refractory=self.p['tau_refr_tonic'], method='euler')
+        self.G.I = -10
+        self.G.tau = self.p['tau_dyn_tonic']
 
 
     # Initialises external input. It should spread the spikes along the trajectory.
     def _init_external_input_neurons(self):
-        ei = -80
-        #Spiking threshold
-        vth_i = -50
-        tr_i = 2 * ms
-        gi = 1
-
         eqs_ext_inp = '''
-        dv/dt = (I-(v-ei) + ie)/tau : 1
+        dv/dt = (I - (v - v_leak_ext)) / tau : 1
         tau : second
         I : 1
         '''
 
-        self.S = NeuronGroup(1, eqs_ext_inp, threshold='v>vth_i', reset='v = ei', refractory=tr_i, method='euler')
-        self.S.I = - 10
-        self.S.tau = 5 * ms
+        self.S = NeuronGroup(1, eqs_ext_inp, threshold='v > v_thr_ext', reset='v = v_reset_ext',
+                             refractory=self.p['tau_refr_ext'], method='euler')
+        self.S.I = -10
+        self.S.tau = self.p['tau_dyn_ext']
+
 
     # Initialises all the synapses
     def _init_synapses(self):
         # Needed for brian2 equations
         rows = self.p['rows']
         cols = self.p['cols']
-
-        # Recurrent weight from PC to PC
-        self.w_PC = 0.5
-        # Weight PC to INH
-        self.w_PCINH = 0.7
-        # Weight INH to PC
-        self.w_INHPC = 0.5
-        # Weight G to PC
-        self.w_GPC = 0.9
-        # Weigth S to PC
-        self.w_SPC = 0.8
 
         ###########################
         # EXC-EXC synapses
@@ -221,30 +227,34 @@ class FirstModel:
         # Records the spikes of one inhibitory cell.
         self.spikemoninh = SpikeMonitor(self.INH, record=10)
 
-        # For debugging reasons.
-        print("get objects in namespace")
-        print(core.magic.get_objects_in_namespace(level=0))
+        netObjs = {k: v for k, v in vars(self).items() if isinstance(v, BrianObject)}
+        net = core.network.Network(netObjs)
+        net.run(1 * second, namespace=self.p)
 
-        #Useful to check what "neurongroup" they have been registered as, and if it matches with the one that will be used for run()
-        print("self PC ", self.PC)
-        print("self INH ", self.INH)
-        print("self G ", self.G)
-        print("self S ", self.S)
-
-        print("self MPC ", self.MPC)
-        print("self MM ", self.MM)
-        print("self MPC ", self.MPC)
-        print("self MG ", self.MG)
-        print("self MINH ", self.MINH)
-
-
-        # Prints variables that will be used for the run()
-        print("collect ")
-        collect()
-        print(collect())
-
-        # Run, report serves
-        run(100 * ms, report='stdout', report_period=10*ms)
+        # # For debugging reasons.
+        # print("get objects in namespace")
+        # print(core.magic.get_objects_in_namespace(level=0))
+        #
+        # #Useful to check what "neurongroup" they have been registered as, and if it matches with the one that will be used for run()
+        # print("self PC ", self.PC)
+        # print("self INH ", self.INH)
+        # print("self G ", self.G)
+        # print("self S ", self.S)
+        #
+        # print("self MPC ", self.MPC)
+        # print("self MM ", self.MM)
+        # print("self MPC ", self.MPC)
+        # print("self MG ", self.MG)
+        # print("self MINH ", self.MINH)
+        #
+        #
+        # # Prints variables that will be used for the run()
+        # print("collect ")
+        # collect()
+        # print(collect())
+        #
+        # # Run, report serves
+        # run(100 * ms, report='stdout', report_period=10*ms)
         #
 
         # Plots the voltages of recorded pyramidal cell.
