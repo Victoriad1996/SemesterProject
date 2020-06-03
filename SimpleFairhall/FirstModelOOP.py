@@ -1,4 +1,3 @@
-from functions import some_indices, spiking_times_fun, plot_voltages_PC
 from brian2 import*
 import functions
 
@@ -20,8 +19,9 @@ class FirstModel:
         self._init_external_input_neurons()
         self._init_synapses()
         self.neuron_idx = 50
-        self.my_indices = some_indices(self.neuron_idx)
+        self.my_indices = functions.some_indices(self.neuron_idx)
 
+    # Print the parameters. Helps for debugging
     def print_param(self, type_list=['G', 'INH']):
         for type_ in type_list:
             if type_ == 'INH':
@@ -46,6 +46,7 @@ class FirstModel:
                 print("v_thr_ext ", self.p["v_thr_ext"])
                 print("tau_dyn_ext ", self.p["tau_dyn_ext"])
                 print("tau_refr_ext ", self.p["tau_refr_ext"])
+
 
     def print_delay(self):
         print(self.delay)
@@ -120,7 +121,11 @@ class FirstModel:
     def _param_sanity_checks(self, p):
         pass
 
+    # If want to modify parameters after creating the class, before running
     def modify_param(self, p):
+        if self.has_run:
+            raise Warning("The network already ran thus the change of parameters should have no impact")
+
         for element in p.keys():
             self.p[element] = p[element]
 
@@ -196,14 +201,11 @@ class FirstModel:
         # EXC-EXC synapses
         ###########################
         self.SPC = Synapses(self.PC, self.PC, 'w:1', on_pre= 'v_post += w')
-        #self.SPC.connect('i // rows - j // rows == 1 or i // rows - j // rows == - 1 ')
-        #self.SPC.connect()
         self.SPC.connect('(( i // rows - j // rows)**2 + ( i % rows -  j % rows)**2 )< 40')
-        #self.SPC.w = 1.
         #self.SPC.connect()
         self.SPC.w = '2*exp(-((x_pre-x_post)**2+(y_pre - y_post)**2)/(30*metre)**2)'
 
-
+        # If already specified the delay to put, don't modify it.
         if self.delay!= None:
             self.SPC.delay = self.delay
         else:
@@ -288,10 +290,9 @@ class FirstModel:
 
 
         # Following line does not run because, the recorded voltages are empty.
-        spiking_times_fun(self, -36.1)
+        functions.spiking_times_fun(self, -36.1)
 
         if show_PC:
-            plot_voltages_PC(self)
+            functions.plot_voltages_PC(self)
         if show_other:
             functions.plot_voltages_other_types(self)
-

@@ -124,8 +124,8 @@ def plot_different_distances(modelClass):
         list2.append(
             (((modelClass.PC.x[50] - modelClass.PC.x[j]) ** 2 + (modelClass.PC.y[50] - modelClass.PC.y[j]) ** 2) / ((2 * 15 * meter) ** 2)) / 10)
 
-    plot_distrib(list1, "minus distance delay (bad)")
-    plot_distrib(list2, "plus distance delay (good)")
+    plot_distrib(list1, "2 - 2 * exp(-||n1 - n2||_2)")
+    plot_distrib(list2, "||n1 - n2||_2")
 
 
 # Visualise connectivity of a group of synapses given in parameter. Represented by vertices and edges.
