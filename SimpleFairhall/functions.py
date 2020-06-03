@@ -205,8 +205,49 @@ def plot_distance(modelClass):
 
 ###### Cells activity ######
 
-#Plots the first spiking times of each cell.
 def plot_spike_times(modelClass):
+    # If no cell spikes, cannot plot the spiking times.
+    # But for later plotting reasons, still need to return indices of first and last spiking times.
+    # Thus returns (arbitrarily 0 and 1).
+    if not modelClass.has_run:
+        raise ValueError("No spiking thus cannot compute the spike times")
+
+    color = 'r'
+    normalized_times, argmin_, argmax_ = normalize(modelClass.spikemon.t / ms, 0, 0.99)
+
+    plot_distrib(modelClass.spikemon.t / ms, "spiking times")
+    show()
+
+    # Just to plot the intire rectangle
+    n = modelClass.p['rows'] * modelClass.p['cols'] - 1
+    plot(modelClass.PC.x[0] / meter, modelClass.PC.y[0] / meter, '.', color='w')
+    plot(modelClass.PC.x[n] / meter, modelClass.PC.y[n] / meter, '.', color='w')
+
+    for j in range(len(modelClass.spikemon.i)):
+        index = modelClass.spikemon.i[j]
+        plot(modelClass.PC.x[index] / meter, modelClass.PC.y[index] / meter, color + '.', alpha = normalized_times[j])
+
+
+    neuron_idx = modelClass.my_indices[0]
+    plot(modelClass.PC.x[neuron_idx] / meter, modelClass.PC.y[neuron_idx] / meter, '*',
+              label=str(neuron_idx))
+
+    # Marks first and last to spike (among the ones that actually spiked).
+    plot(modelClass.PC.x[modelClass.spikemon.i[argmin_]] / meter, modelClass.PC.y[modelClass.spikemon.i[argmin_]] / meter, 'x', color='m', label="first")
+    plot(modelClass.PC.x[modelClass.spikemon.i[argmax_]] / meter, modelClass.PC.y[modelClass.spikemon.i[argmax_]] / meter, 'x', color='k', label="last")
+
+    xlim(-10, modelClass.p['rows'])
+    ylim(0, modelClass.p['cols'])
+    xlabel('x')
+    ylabel('y', rotation='horizontal')
+    axis('equal')
+    title("Spiking time of cells")
+    legend()
+    show()
+
+
+#Plots the first spiking times of each cell.
+def alternative_plot_spike_times(modelClass):
 
 
 
@@ -269,7 +310,26 @@ def plot_spike_times(modelClass):
 
 # Computes first spiking times of neurons, given their voltages recording.
 # TODO: Replace this by more efficient SpikeMonitor
-def spiking_times_fun(modelClass, threshold=-36.1, type_='PC'):
+
+def spiking_times_fun(modelClass, type_='PC'):
+    if not modelClass.has_run:
+        raise ValueError("Cannot record the spiking times if the network did not ran yet.")
+
+    if type_ == 'PC':
+        modelClass.PC_first_spike = modelClass.spikemon.i[0]
+        modelClass.PC_last_spike = modelClass.spikemon.i[-1]
+    elif type_ == 'G':
+        modelClass.G_first_spike = modelClass.spikemong.i[0]
+        modelClass.G_last_spike = modelClass.spikemong.i[-1]
+    elif type_ == 'S':
+        modelClass.S_first_spike = modelClass.spikemons.i[0]
+        modelClass.S_last_spike = modelClass.spikemons.i[-1]
+    elif type_ == 'INH':
+        modelClass.INH_first_spike = modelClass.spikemoninh.i[0]
+        modelClass.INH_last_spike = modelClass.spikemoninh.i[-1]
+
+
+def alternative_spiking_times_fun(modelClass, threshold=-36.1, type_='PC'):
     if not modelClass.has_run:
         raise ValueError("Cannot record the spiking times if the network did not ran yet.")
 
@@ -353,16 +413,16 @@ def record_spikes(modelClass, threshold=-36.1, type_='PC', index=0):
     return spike_time
 
 
-def plot_voltages_PC(modelClass, my_indices=None, plot_last_first=True):
+def plot_voltages_PC(modelClass, plot_last_first=True):
     # Checks it has indeed ran
     if not modelClass.has_run:
         raise ValueError("Cannot plot if hasn't plot")
 
-    if not my_indices:
-        my_indices = modelClass.my_indices
-
-    for i in my_indices:
-        plot(modelClass.MM.t / ms, modelClass.MM.v[i], label='PC' + str(i))
+    for i in range(len(modelClass.my_indices)):
+        my_plot = plot(modelClass.MPC.t / ms, modelClass.MPC.v[i], label='PC' + str(i))
+        index = modelClass.my_indices[i]
+        if index in list(modelClass.spikemon.i):
+            plot(modelClass.PC_all_values['t'][index] / ms, modelClass.PC_all_values['v'][index], 'o', color=my_plot[0].get_color() )
 
     if plot_last_first:
         plot(modelClass.MM.t / ms, modelClass.MM.v[modelClass.PC_first_spike], label='First Spike' + str(modelClass.PC_first_spike))
@@ -384,21 +444,19 @@ def plot_voltages_other_types(modelClass, type_list=['G', 'S', 'INH'], my_indice
         if type_ == 'INH':
             for i in my_indices:
                 my_plot = plot(modelClass.MINH.t / ms, modelClass.MINH.v[i], label='INH' + str(i))
-            color = my_plot[0].get_color()
-            plot(modelClass.INH_all_values['t'][0] / ms, modelClass.INH_all_values['v'][0], 'o', color=color)
+            plot(modelClass.INH_all_values['t'][0] / ms, modelClass.INH_all_values['v'][0], 'o', color=my_plot[0].get_color())
         elif type_ == 'G':
             for i in my_indices:
                 my_plot = plot(modelClass.MG.t / ms, modelClass.MG.v[i], label='G' + str(i))
-            color = my_plot[0].get_color()
-            plot(modelClass.G_all_values['t'][0] / ms, modelClass.G_all_values['v'][0], 'o', color=color)
+            plot(modelClass.G_all_values['t'][0] / ms, modelClass.G_all_values['v'][0], 'o', color=my_plot[0].get_color())
 
         elif type_ == 'S':
             for i in my_indices:
                 my_plot = plot(modelClass.MS.t / ms, modelClass.MS.v[i], label='S' + str(i))
-            color = my_plot[0].get_color()
-            plot(modelClass.S_all_values['t'][0] / ms, modelClass.S_all_values['v'][0], 'o',color=color)
+            plot(modelClass.S_all_values['t'][0] / ms, modelClass.S_all_values['v'][0], 'o',color=my_plot[0].get_color())
         else:
             raise ValueError("Type must be 'PC', 'G' , 'INH' or 'S' ")
+
     title(my_title)
     legend()
     show()

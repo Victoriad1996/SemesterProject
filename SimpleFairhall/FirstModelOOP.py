@@ -1,8 +1,6 @@
 from brian2 import*
 import functions
 
-
-
 class FirstModel:
     def __init__(self, param):
         self.has_run = False
@@ -175,7 +173,6 @@ class FirstModel:
         self.G = NeuronGroup(self.p['rows'], eqs_tonic, threshold='v>v_thr_tonic', reset='v = v_reset_tonic',
                              refractory=self.p['tau_refr_tonic'], method='euler')
 
-
         self.G.tau = self.p['tau_dyn_tonic']
 
 
@@ -284,13 +281,16 @@ class FirstModel:
         self.has_run = True
 
         # Records spiking information about different
+        self.PC_all_values = self.spikemon.all_values()
         self.INH_all_values = self.spikemoninh.all_values()
         self.G_all_values = self.spikemong.all_values()
         self.S_all_values = self.spikemons.all_values()
 
 
         # Following line does not run because, the recorded voltages are empty.
-        functions.spiking_times_fun(self, -36.1)
+        #functions.spiking_times_fun(self, -36.1)
+
+        functions.spiking_times_fun(self)
 
         if show_PC:
             functions.plot_voltages_PC(self)
