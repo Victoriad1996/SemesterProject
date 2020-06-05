@@ -200,7 +200,7 @@ class FirstModel:
         self.SPC = Synapses(self.PC, self.PC, 'w:1', on_pre= 'v_post += w')
         self.SPC.connect('(( i // rows - j // rows)**2 + ( i % rows -  j % rows)**2 )< 40')
         #self.SPC.connect()
-        self.SPC.w = '2*exp(-((x_pre-x_post)**2+(y_pre - y_post)**2)/(30*metre)**2)'
+        self.SPC.w = '1.5*exp(-((x_pre-x_post)**2+(y_pre - y_post)**2)/(30*metre)**2)'
 
         # If already specified the delay to put, don't modify it.
         if self.delay!= None:
@@ -229,6 +229,7 @@ class FirstModel:
         or ((j//rows>= 10) and (j % rows >=4 and j % rows<=6))
         '''
 
+        #0.17
         self.SPCG = Synapses(self.G, self.PC, on_pre='v_post+=0.17')
         #self.SPCG.connect(eqs_spcg)
         self.SPCG.connect(eqs_spcg)

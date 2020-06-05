@@ -205,7 +205,18 @@ def plot_distance(modelClass):
 
 ###### Cells activity ######
 
-def plot_spike_times(modelClass):
+def reshape_spiking_times (my_spikemon, spiking_index=0):
+    result = []
+    n = len(my_spikemon.values('t'))
+    for i in range(n):
+        if len(my_spikemon.values('t')[i] / ms) <= spiking_index:
+            result.append(nan)
+        else:
+            result.append(my_spikemon.values('t')[i][spiking_index] / ms)
+    return result
+
+
+def plot_spike_times(modelClass, spiking_index=0):
     # If no cell spikes, cannot plot the spiking times.
     # But for later plotting reasons, still need to return indices of first and last spiking times.
     # Thus returns (arbitrarily 0 and 1).
@@ -213,9 +224,11 @@ def plot_spike_times(modelClass):
         raise ValueError("No spiking thus cannot compute the spike times")
 
     color = 'r'
-    normalized_times, argmin_, argmax_ = normalize(modelClass.spikemon.t / ms, 0, 0.99)
 
-    plot_distrib(modelClass.spikemon.t / ms, "spiking times")
+    my_spikemon = reshape_spiking_times(modelClass.spikemon, spiking_index)
+    normalized_times, argmin_, argmax_ = normalize(my_spikemon, 0, 0.9)
+
+    plot_distrib(my_spikemon, "spiking times")
     show()
 
     # Just to plot the intire rectangle
@@ -223,9 +236,11 @@ def plot_spike_times(modelClass):
     plot(modelClass.PC.x[0] / meter, modelClass.PC.y[0] / meter, '.', color='w')
     plot(modelClass.PC.x[n] / meter, modelClass.PC.y[n] / meter, '.', color='w')
 
-    for j in range(len(modelClass.spikemon.i)):
-        index = modelClass.spikemon.i[j]
-        plot(modelClass.PC.x[index] / meter, modelClass.PC.y[index] / meter, color + '.', alpha = normalized_times[j])
+    for j in range(modelClass.p['rows'] * modelClass.p['cols']):
+        plot(modelClass.PC.x[j] / meter , modelClass.PC.y[j] / meter, color + '.', alpha = 1 - normalized_times[j])
+    #for j in range(len(modelClass.spikemon.i)):
+     #   index = modelClass.spikemon.i[j]
+      #  plot(modelClass.PC.x[index] / meter, modelClass.PC.y[index] / meter, color + '.', alpha = normalized_times[j])
 
 
     neuron_idx = modelClass.my_indices[0]
@@ -233,8 +248,8 @@ def plot_spike_times(modelClass):
               label=str(neuron_idx))
 
     # Marks first and last to spike (among the ones that actually spiked).
-    plot(modelClass.PC.x[modelClass.spikemon.i[argmin_]] / meter, modelClass.PC.y[modelClass.spikemon.i[argmin_]] / meter, 'x', color='m', label="first")
-    plot(modelClass.PC.x[modelClass.spikemon.i[argmax_]] / meter, modelClass.PC.y[modelClass.spikemon.i[argmax_]] / meter, 'x', color='k', label="last")
+    plot(modelClass.PC.x[argmin_] / meter, modelClass.PC.y[argmin_] / meter, 'x', color='m', label="first")
+    plot(modelClass.PC.x[argmax_] / meter, modelClass.PC.y[argmax_] / meter, 'x', color='k', label="last")
 
     xlim(-10, modelClass.p['rows'])
     ylim(0, modelClass.p['cols'])
