@@ -239,8 +239,8 @@ class FirstModel:
         ###########################
         self.SS = Synapses(self.S, self.PC, on_pre='v_post+=0.5')
         # Triggers a few neurons in the trajectory.
-        #self.SS.connect('((j % rows <= 17 and j%rows >= 15) and (j // rows == 0 ))')
-        self.SS.connect('((j % rows >=4 and j % rows<=6) and (j // rows == 10 ))')
+        self.SS.connect('((j % rows <= 17 and j%rows >= 15) and (j // rows == 0 ))')
+        #self.SS.connect('((j % rows >=4 and j % rows<=6) and (j // rows == 10 ))')
         #self.SS.connect('j % rows == 5 and j // rows == 10')
 
     # TODO: Find better way to record spike moments
