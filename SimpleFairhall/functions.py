@@ -236,7 +236,7 @@ def reshape_spiking_times (my_spikemon, spiking_index=0, threshold=0):
     return result, argmin_, argmax_
 
 
-def plot_spike_times(modelClass, spiking_index=0, threshold=0):
+def plot_spike_times(modelClass, spiking_index=0, threshold=0, plot_distribution=True):
     # If no cell spikes, cannot plot the spiking times.
     # But for later plotting reasons, still need to return indices of first and last spiking times.
     # Thus returns (arbitrarily 0 and 1).
@@ -247,8 +247,9 @@ def plot_spike_times(modelClass, spiking_index=0, threshold=0):
 
     my_spikemon, argmin_, argmax_  = reshape_spiking_times(modelClass.spikemon, spiking_index=spiking_index, threshold=threshold)
     normalized_times, min_, max_ = normalize(my_spikemon, 0, 0.9)
-    plot_distrib(my_spikemon, "spiking times")
-    show()
+    if plot_distribution:
+        plot_distrib(my_spikemon, "spiking times")
+        show()
 
     # Just to plot the entire rectangle
     n = modelClass.p['rows'] * modelClass.p['cols'] - 1
