@@ -1,8 +1,10 @@
+import matplotlib.pyplot as plt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QFileDialog
 from PyQt5.QtGui import QIcon, QImage, QPainter, QPen, QPixmap
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5 import QtWidgets, QtCore
 import sys
+import numpy as np
 
 
 class Window(QMainWindow):
@@ -37,30 +39,34 @@ class Window(QMainWindow):
         modeMenu = mainMenu.addMenu("Paint Mode")
 
         saveAction = QAction(QIcon("icons/save.png"), "Save", self)
-        saveAction.setShortcut("Ctrl +S")
+        saveAction.setShortcut("Ctrl+S")
         fileMenu.addAction(saveAction)
         saveAction.triggered.connect(self.save)
 
         BrushSizeAction = QAction(QIcon("icons/size.png"), "Size", self)
-        BrushSizeAction.setShortcut("Ctrl + B")
+        BrushSizeAction.setShortcut("Ctrl+B")
         brushMenu.addAction(BrushSizeAction)
         BrushSizeAction.triggered.connect(self.setBrushSize)
 
         BrushColorAction = QAction(QIcon("icons/black.png"), "Color", self)
-        BrushColorAction.setShortcut("Ctrl + P ")
+        BrushColorAction.setShortcut("Ctrl+P")
         brushMenu.addAction(BrushColorAction)
         BrushColorAction.triggered.connect(self.setBrushColor)
 
         modeAction = QAction(QIcon("icons/brush.png"), "Mode", self)
-        modeAction.setShortcut("Ctrl + M")
+        modeAction.setShortcut("Ctrl+M")
         modeMenu.addAction(modeAction)
         modeAction.triggered.connect(self.setMode)
 
-
         clearAction = QAction(QIcon("icons/clear.png"), "Clear", self)
-        clearAction.setShortcut("Ctrl + C ")
+        clearAction.setShortcut("Ctrl+C")
         fileMenu.addAction(clearAction)
         clearAction.triggered.connect(self.clear)
+
+        getMatrixAction = QAction(QIcon("icons/mat.png"), "getMatrix", self)
+        getMatrixAction.setShortcut("Ctrl+X")
+        fileMenu.addAction(getMatrixAction)
+        getMatrixAction.triggered.connect(self.getMatrix)
 
 
     def reSetSquare(self):
@@ -150,6 +156,19 @@ class Window(QMainWindow):
         self.node = None
         self.update()
 
+    def getMatrix(self):
+        img = self._QImage2numpy(self.image)
+        plt.figure()
+        plt.imshow(img)
+        plt.show()
+
+    # Convert QImage to numpy array
+    def _QImage2numpy(self, src):
+        b = src.bits()
+        b.setsize(self.height() * self.width() * 4)
+        arr = np.frombuffer(b, np.uint8).reshape((self.height(), self.width(), 4))
+        arr = arr[:, :, [2,1,0,3]]  # No clue why, but QImage seems to be not RGB but BGR
+        return(arr)
 
 
 if __name__ == "__main__":
