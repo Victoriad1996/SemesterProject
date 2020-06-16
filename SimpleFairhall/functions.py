@@ -3,6 +3,9 @@ from matplotlib.pyplot import*
 from numpy import*
 from math import isnan
 import warnings
+from opencvtry import cvWriter
+import matplotlib.pyplot as plt
+from IPython.display import Video
 
 
 ######################### Basic Functions #########################
@@ -61,6 +64,8 @@ def normalize(l, lower=0, upper=1):
     # Takes out the "inf" values in order to compute the max, min and length of all given values.
     if lower>=upper:
         raise ValueError("Lower key must be strictly smaller than upper key.")
+    if is_list_nan(l):
+        return [], 0, 0
 
     norm_l = [i for i in l if not np.isnan(i)]
 
@@ -108,6 +113,48 @@ def sgmd(x):
 
     return 1 / (1 + np.exp(-x))
 
+def reduce_matrix(my_matrix, divisor):
+    plt.imshow(my_matrix)
+    plt.show()
+    rows = int(my_matrix.shape[0] / divisor)
+    cols = int(my_matrix.shape[1] / divisor)
+    result = np.zeros((rows, cols))
+    for i in range(rows):
+        for j in range(cols):
+
+            result[i,j] = my_matrix[i * divisor, j * divisor]
+    plt.imshow(result)
+    plt.show()
+    return result
+
+
+def convert_matrix_pos_to_indices(number, my_matrix, rows, cols):
+    my_indices = []
+    result = np.zeros((number, rows * cols))
+    for i in range(rows * cols):
+        if my_matrix[i%rows, i//rows] > 0:
+            my_indices.append(i)
+            result[:,i] = np.ones(number)
+
+    return result
+
+def convert_matrix_to_source_target(my_matrix):
+    sources, targets = my_matrix.nonzero()
+    sources = np.array(sources)
+    targets = np.array(targets)
+    return sources, targets
+
+def convert_to_movie(list_frames, height, width, filePathName, choose_color=True):
+    if choose_color:
+        base_matrix = np.zeros((width, height, 4))
+        base_matrix[:, :, 3] = 255 * np.ones((width, height))
+
+    FrameDim = (width, height)
+    with cvWriter(filePathName, FrameDim) as vidwriter:
+        for frame in list_frames:
+            base_matrix[:,:,1] = frame
+            for _ in range(10):
+                vidwriter.write(base_matrix)
 
 ######################### Plotting functions #########################
 
@@ -150,6 +197,7 @@ def visualise_connectivity(S, mylegend):
     xlabel('Source neuron index')
     ylabel('Target neuron index')
     suptitle(mylegend)
+    show()
 
 # If gives a neuron_idx, then plots all the pyramidal cells it's connected to by the synapses S.
 # Otherwise plots all neurons in the synapses S.
@@ -205,7 +253,7 @@ def plot_distance(modelClass):
 
 ###### Cells activity ######
 
-def reshape_spiking_times (my_spikemon, spiking_index=0, threshold=0):
+def reshape_spiking_times (my_spikemon, spiking_index=0, lower_threshold=0, upper_threshold=np.infty):
     result = []
     min_ = inf
     max_ = -1.
@@ -219,7 +267,7 @@ def reshape_spiking_times (my_spikemon, spiking_index=0, threshold=0):
             result.append(nan)
         else:
             spike_time = my_spikemon.values('t')[i][spiking_index] / ms
-            if spike_time >= threshold:
+            if spike_time >= lower_threshold and spike_time <= upper_threshold:
                 result.append(spike_time)
                 if spike_time <= min_:
                     argmin_ = i
@@ -235,6 +283,41 @@ def reshape_spiking_times (my_spikemon, spiking_index=0, threshold=0):
 
     return result, argmin_, argmax_
 
+def video_spike_times(modelClass, spiking_index=0, plot_distribution=True, filePathName="./video_spikes.mp4"):
+    if not modelClass.has_run:
+        raise ValueError("No spiking thus cannot compute the spike times")
+
+    n = modelClass.p['rows'] * modelClass.p['cols'] - 1
+
+    height = np.int(modelClass.PC.x[n] / meter)
+    width = np.int(modelClass.PC.y[n] / meter)
+
+
+    list_frames = []
+    for index_ in range(spiking_index + 1):
+        for j in range(10):
+            # Create the frame
+            my_spikemon, argmin_, argmax_ = reshape_spiking_times(modelClass.spikemon, spiking_index=index_ ,lower_threshold=(j-1) * 10, upper_threshold= (j + 1) * 10)
+
+            list_matrix = normalize(my_spikemon, 10, 255)
+            if len(list_matrix[0]) > 0:
+                for i in range(len(list_matrix[0])):
+                    if np.isnan(list_matrix[0][i]):
+                        list_matrix[0][i] = 0
+                    else:
+                        list_matrix[0][i] = 250
+
+                Excitatory_matrix = np.zeros([np.int(modelClass.PC.y[n] / meter), np.int(modelClass.PC.x[n] / meter)])
+
+                for i in range(modelClass.p['rows'] * modelClass.p['cols']):
+                    variable = list_matrix[0][i]
+                    Excitatory_matrix[np.int(modelClass.PC.y[n] / meter) - np.int(modelClass.PC.y[i] / meter) - 1, np.int(modelClass.PC.x[i] / meter) - 1] = variable
+                list_frames.append(Excitatory_matrix)
+
+    convert_to_movie(list_frames,  height=height,width=width, filePathName=filePathName)
+
+    return list_frames, height, width
+
 
 def plot_spike_times(modelClass, spiking_index=0, threshold=0, plot_distribution=True):
     # If no cell spikes, cannot plot the spiking times.
@@ -245,8 +328,12 @@ def plot_spike_times(modelClass, spiking_index=0, threshold=0, plot_distribution
 
     color = 'r'
 
-    my_spikemon, argmin_, argmax_  = reshape_spiking_times(modelClass.spikemon, spiking_index=spiking_index, threshold=threshold)
+    my_spikemon, argmin_, argmax_  = reshape_spiking_times(modelClass.spikemon, spiking_index=spiking_index, lower_threshold=threshold)
     normalized_times, min_, max_ = normalize(my_spikemon, 0, 0.9)
+
+
+    #list_matrix[0] = [int(el) for el in list_matrix[0]]
+
     if plot_distribution:
         plot_distrib(my_spikemon, "spiking times")
         show()
@@ -256,9 +343,10 @@ def plot_spike_times(modelClass, spiking_index=0, threshold=0, plot_distribution
     plot(modelClass.PC.x[0] / meter, modelClass.PC.y[0] / meter, '.', color='w')
     plot(modelClass.PC.x[n] / meter, modelClass.PC.y[n] / meter, '.', color='w')
 
+
     for j in range(modelClass.p['rows'] * modelClass.p['cols']):
         plot(modelClass.PC.x[j] / meter , modelClass.PC.y[j] / meter, color + '.', alpha = 1 - normalized_times[j])
-
+    show()
 
     neuron_idx = modelClass.my_indices[0]
     plot(modelClass.PC.x[neuron_idx] / meter, modelClass.PC.y[neuron_idx] / meter, '*',

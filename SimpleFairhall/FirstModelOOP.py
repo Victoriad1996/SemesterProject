@@ -19,6 +19,9 @@ class FirstModel:
         self.neuron_idx = 50
         self.my_indices = functions.some_indices(self.neuron_idx)
 
+        # For plotting purposes
+        self.excitatory_matrix = np.zeros([self.p['rows'], self.p['cols']])
+
     # Print the parameters. Helps for debugging
     def print_param(self, type_list=['G', 'INH']):
         for type_ in type_list:
@@ -106,7 +109,7 @@ class FirstModel:
             "w_SPC" : 0.8           # Weigth S to PC
         }
 
-        pnew = {}
+        pnew = p
         for k, v in genericParam.items():
             if k not in p.keys():
                 pnew[k] = v
@@ -170,6 +173,7 @@ class FirstModel:
         tau : second
         '''
 
+        #self.p['rows']
         self.G = NeuronGroup(self.p['rows'], eqs_tonic, threshold='v>v_thr_tonic', reset='v = v_reset_tonic',
                              refractory=self.p['tau_refr_tonic'], method='euler')
 
@@ -223,16 +227,22 @@ class FirstModel:
         # TONIC-EXC synapses
         ###########################
         #Draws the trajectory
-        eqs_spcg = '''
-        ((j % rows <= 17 and j%rows >= 15) and (j // rows <= 10 ))
-        or ((j // rows >= 8 and j // rows <= 10) and (j % rows <= 15 and j % rows >= 4))
-        or ((j//rows>= 10) and (j % rows >=4 and j % rows<=6))
-        '''
+
 
         #0.17
         self.SPCG = Synapses(self.G, self.PC, on_pre='v_post+=0.17')
-        #self.SPCG.connect(eqs_spcg)
-        self.SPCG.connect(eqs_spcg)
+
+        if 'connection_matrix_G' in self.p.keys():
+            sources, targets = functions.convert_matrix_to_source_target(self.p['connection_matrix_G'])
+        # synapses = Synapses(G, G, on_pre='v_post += 0.2')
+            self.SPCG.connect(i=sources, j=targets)
+        else:
+            eqs_spcg = '''
+                    ((j % rows <= 17 and j%rows >= 15) and (j // rows <= 10 ))
+                    or ((j // rows >= 8 and j // rows <= 10) and (j % rows <= 15 and j % rows >= 4))
+                    or ((j//rows>= 10) and (j % rows >=4 and j % rows<=6))
+                    '''
+            self.SPCG.connect(eqs_spcg)
 
         ###########################
         # EXTERNAL INP-EXC synapses
@@ -240,8 +250,47 @@ class FirstModel:
         self.SS = Synapses(self.S, self.PC, on_pre='v_post+=0.5')
         # Triggers a few neurons in the trajectory.
         #self.SS.connect('((j % rows <= 17 and j%rows >= 15) and (j // rows == 0 ))')
-        self.SS.connect('((j % rows >=4 and j % rows<=6) and (j // rows == 10 ))')
+        if 'connection_matrix_S' in self.p.keys():
+            sources, targets = functions.convert_matrix_to_source_target(self.p['connection_matrix_S'])
+            # synapses = Synapses(G, G, on_pre='v_post += 0.2')
+            self.SS.connect(i=sources, j=targets)
+        else:
+            eqs_ss = '((j % rows >=4 and j % rows<=6) and (j // rows == 10 ))'
+            self.SS.connect(eqs_ss)
         #self.SS.connect('j % rows == 5 and j // rows == 10')
+
+
+    # Not useful?
+    def __modify_synapses__(self, old_synapses, new_synapses, connection_matrix=[], eqs='nothing'):
+        functions.visualise_connectivity(old_synapses, "Pre change")
+        old_synapses = new_synapses
+        if eqs!='nothing':
+            old_synapses.connect(eqs)
+            functions.visualise_connectivity(old_synapses, "Post change eqs")
+        else:
+            # The connection matrix as a numpy array of 0's and 1's
+            sources, targets = connection_matrix.nonzero()
+            sources = np.array(sources)
+            targets = np.array(targets)
+            # synapses = Synapses(G, G, on_pre='v_post += 0.2')
+            old_synapses.connect(i=sources, j=targets)
+            functions.visualise_connectivity(old_synapses, "Post change matrix")
+
+    def modify_connectivity(self, var='SPC', connection_matrix=[], eqs='nothing'):
+        if var=='SPC':
+            new_synapses = Synapses(self.PC, self.PC, 'w:1', on_pre= 'v_post += w')
+            self.__modify_synapses__(self.SPC, new_synapses, connection_matrix, eqs)
+        elif var=='SPCINH':
+            new_synapses = Synapses(self.INH, self.PC, on_pre='v_post-=0.02')
+            self.__modify_synapses__(self.SPCINH, new_synapses, connection_matrix, eqs)
+        elif var=='SPCG':
+            new_synapses = Synapses(self.G, self.PC, on_pre='v_post+=0.17')
+            self.__modify_synapses__(self.SPCG, new_synapses, connection_matrix, eqs)
+        elif var=='S':
+            new_synapses = Synapses(self.S, self.PC, on_pre='v_post+=0.5')
+            self.__modify_synapses__(self.SS, new_synapses, connection_matrix, eqs)
+        else:
+            raise ValueError("No synapses called " + str(var))
 
     # TODO: Find better way to record spike moments
     def run(self, duration=50*ms, show_PC=False, show_other=False):
