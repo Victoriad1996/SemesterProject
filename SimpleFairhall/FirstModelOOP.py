@@ -202,9 +202,9 @@ class FirstModel:
         # EXC-EXC synapses
         ###########################
         self.SPC = Synapses(self.PC, self.PC, 'w:1', on_pre= 'v_post += w')
-        self.SPC.connect('(( i // rows - j // rows)**2 + ( i % rows -  j % rows)**2 )< 40')
+        self.SPC.connect('(( i // rows - j // rows)**2 + ( i % rows -  j % rows)**2 )< 4')
         #self.SPC.connect()
-        self.SPC.w = '1.5*exp(-((x_pre-x_post)**2+(y_pre - y_post)**2)/(30*metre)**2)'
+        self.SPC.w = '5*exp(-((x_pre-x_post)**2+(y_pre - y_post)**2)/(30*metre)**2)'
 
         # If already specified the delay to put, don't modify it.
         if self.delay!= None:
@@ -230,7 +230,7 @@ class FirstModel:
 
 
         #0.17
-        self.SPCG = Synapses(self.G, self.PC, on_pre='v_post+=0.17')
+        self.SPCG = Synapses(self.G, self.PC, on_pre='v_post+=0.157')
 
         if 'connection_matrix_G' in self.p.keys():
             sources, targets = functions.convert_matrix_to_source_target(self.p['connection_matrix_G'])
