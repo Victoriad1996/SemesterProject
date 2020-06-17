@@ -187,7 +187,7 @@ class FirstModel:
         tau : second
         '''
 
-        self.S = NeuronGroup(1, eqs_ext_inp, threshold='v>v_thr_ext', reset='v = v_reset_ext',
+        self.S = NeuronGroup(10, eqs_ext_inp, threshold='v>v_thr_ext', reset='v = v_reset_ext',
                              refractory=self.p['tau_refr_ext'], method='euler')
         self.S.tau = self.p['tau_dyn_ext']
 

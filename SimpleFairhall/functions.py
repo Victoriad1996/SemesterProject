@@ -346,7 +346,7 @@ def plot_spike_times(modelClass, spiking_index=0, threshold=0, plot_distribution
 
     for j in range(modelClass.p['rows'] * modelClass.p['cols']):
         plot(modelClass.PC.x[j] / meter , modelClass.PC.y[j] / meter, color + '.', alpha = 1 - normalized_times[j])
-    show()
+
 
     neuron_idx = modelClass.my_indices[0]
     plot(modelClass.PC.x[neuron_idx] / meter, modelClass.PC.y[neuron_idx] / meter, '*',

@@ -38,6 +38,7 @@ class Window(QMainWindow):
         mainMenu = self.menuBar()
         fileMenu = mainMenu.addMenu("File")
         brushMenu = mainMenu.addMenu("Brush ")
+        brushColor = mainMenu.addMenu("Brush Color")
         modeMenu = mainMenu.addMenu("Paint Mode")
 
         saveAction = QAction(QIcon("icons/save.png"), "Save", self)
@@ -69,6 +70,25 @@ class Window(QMainWindow):
         getMatrixAction.setShortcut("Ctrl+X")
         fileMenu.addAction(getMatrixAction)
         getMatrixAction.triggered.connect(self.getMatrix)
+
+
+        redAction = QAction(QIcon("icons/red.png"), "G inputs", self)
+        redAction.setShortcut("Ctrl+R")
+        brushColor.addAction(redAction)
+        redAction.triggered.connect(self.redColor)
+
+        greenAction = QAction(QIcon("icons/green.png"), "S inputs", self)
+        greenAction.setShortcut("Ctrl+G")
+        brushColor.addAction(greenAction)
+        greenAction.triggered.connect(self.greenColor)
+
+
+
+    def redColor(self):
+        self.brushColor = Qt.red
+
+    def greenColor(self):
+        self.brushColor = Qt.green
 
 
     def reSetSquare(self):
@@ -180,8 +200,20 @@ if __name__ == "__main__":
     window.show()
     app.exec()
     frame_img = window.img
-    result = functions.reduce_matrix(frame_img[:,:,0],10 )
-    plt.imshow(result)
+    #Red
+    Gresult = functions.reduce_matrix(frame_img[:, :, 1], 10)
+    #Green
+    Sresult = functions.reduce_matrix(frame_img[:,:,0],10 )
+
+    plt.imshow(Gresult)
+    plt.title("G results")
     plt.show()
 
-    np.save('frame_img.npy', result)
+    plt.imshow(Sresult)
+    plt.title("S legend")
+    plt.show()
+
+    np.save('G_inputs.npy', Gresult)
+    np.save('S_inputs.npy', Sresult)
+
+
