@@ -27,8 +27,8 @@ class Window(QMainWindow):
         self.image.fill(Qt.white)
 
         self.drawing = False
-        self.brushSize = 2
-        self.brushColor = Qt.black
+        self.brushSize = 20
+        self.brushColor = Qt.green
         self.lastPoint = QPoint()
         self.mode = "Scribble"
         self.node = None
@@ -205,13 +205,13 @@ if __name__ == "__main__":
     #Green
     Sresult = functions.reduce_matrix(frame_img[:,:,0],10 )
 
+
+
     plt.imshow(Gresult)
     plt.title("G results")
-    plt.show()
 
     plt.imshow(Sresult)
     plt.title("S legend")
-    plt.show()
 
     np.save('G_inputs.npy', Gresult)
     np.save('S_inputs.npy', Sresult)

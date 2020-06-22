@@ -2,20 +2,28 @@ from brian2 import*
 import functions
 
 class FirstModel:
-    def __init__(self, param):
+    def __init__(self, param, model="Fairhall"):
+        self.model = model
+
+        self.p = self._complete_parameters(param)
         self.has_run = False
         self.delay = None
         self.PC_spiking_times = None
-        self.G_spiking_times = None
         self.INH_spiking_times = None
 
-        self.p = self._complete_parameters(param)
         self._param_sanity_checks(self.p)
         self._init_pyramidal_neurons()
         self._init_inhibitory_neurons()
-        self._init_tonic_input_neurons()
-        self._init_external_input_neurons()
-        self._init_synapses()
+        self._init_standard_synapses()
+        if self.model=="Fairhall":
+            self._init_tonic_input_neurons()
+            self._init_external_input_neurons()
+            self._init_random_input()
+            self._init_fairhall_synapses()
+            if 'result_G' in self.p.keys():
+                self.G_spiking_times = None
+                self._init_tonic_synapses()
+
         self.neuron_idx = 50
         self.my_indices = functions.some_indices(self.neuron_idx)
 
@@ -23,7 +31,7 @@ class FirstModel:
         self.excitatory_matrix = np.zeros([self.p['rows'], self.p['cols']])
 
     # Print the parameters. Helps for debugging
-    def print_param(self, type_list=['G', 'INH']):
+    def print_param(self, type_list=['INH']):
         for type_ in type_list:
             if type_ == 'INH':
                 print('INH : ')
@@ -32,14 +40,6 @@ class FirstModel:
                 print("v_thr_inh ", self.p["v_thr_inh"])
                 print("tau_dyn_inh ", self.p["tau_dyn_inh"])
                 print("tau_refr_inh ", self.p["tau_refr_inh"])
-            elif type_ == 'G':
-                print('G : ')
-
-                print("v_leak_tonic ", self.p["v_leak_tonic"])
-                print("v_reset_tonic ", self.p["v_reset_tonic"])
-                print("v_thr_tonic ", self.p["v_thr_tonic"])
-                print("tau_dyn_tonic ", self.p["tau_dyn_tonic"])
-                print("tau_refr_tonic ", self.p["tau_refr_tonic"])
             elif type_ == 'S':
                 print('S : ')
                 print("v_reset_ext ", self.p["v_reset_ext"])
@@ -47,10 +47,6 @@ class FirstModel:
                 print("v_thr_ext ", self.p["v_thr_ext"])
                 print("tau_dyn_ext ", self.p["tau_dyn_ext"])
                 print("tau_refr_ext ", self.p["tau_refr_ext"])
-
-
-    def print_delay(self):
-        print(self.delay)
 
     def set_delay(self, new_delay):
         self.delay = new_delay
@@ -75,31 +71,43 @@ class FirstModel:
             'tau_dyn_exc' : 50 * ms,    # Leak timescale
             "tau_refr_exc" : 8 * ms,    # Refractory period
             "r_max_exc" : 20 * Hz,      # Maximum rate
+            'rec_weight' : 4.5,         # Recurrent weight
             "lambda_PL_exc" : 0.15 * metre,    # ???
 
             # Inhibitory neurons
-            "v_leak_inh" : -20,         # Leak potential
+            "v_leak_inh" : -10,         # Leak potential
             "v_reset_inh": -80,         # Reset potential
             "v_thr_inh" : -50,          # Spiking threshold
-            'tau_dyn_inh': 5 * ms,      # Leak timescale
+            'tau_dyn_inh': 50 * ms,      # Leak timescale
             "tau_refr_inh" : 2 * ms,    # Refractory period
             "gi_inh" : 1,               # ???
-
-            # Tonic Neurons
+            "inh_weight_pi" : 0.02,
+            "inh_weight_ip" : 0.01,
+            #
+            # # Tonic Neurons
+            "num_tonic_neurons" : 20, # Number of tonic neurons
             "v_leak_tonic": -30,          # Leak potential
             "v_reset_tonic" : -80,        # Reset potential
             "v_thr_tonic" : -50,          # Spiking threshold
             'tau_dyn_tonic': 5 * ms,      # Leak timescale
             "tau_refr_tonic" : 2 * ms,    # Refractory period
             "gi_tonic" : 1,               # ???
+            "tonic_weight" : 0.2,         # Tonic weight
 
             # External Input Neurons
+            "num_ext_neurons" : 10, # Number of external input neurons
             "v_leak_ext": -40,           # Leak potential
             "v_reset_ext": -80,          # Reset potential
             "v_thr_ext": -50,            # Spiking threshold
             'tau_dyn_ext': 5 * ms,       # Leak timescale
             "tau_refr_ext": 2 * ms,      # Refractory period
             "gi_ext": 1,  # ???
+            "ext_weight" : 0.5,
+
+            # Random inputs
+
+            "input_rate" : 50*Hz, # Rate of spikes for the
+            'R_weight' : 0.7,
 
             # Synapses
             "w_PC" : 0.5,           # Recurrent weight from PC to PC
@@ -134,15 +142,26 @@ class FirstModel:
     def _init_pyramidal_neurons(self):
         eqs_exc = '''
             dv/dt = (I - (v - v_leak_exc)) / tau : 1
+            h : 1
             x : metre
             y : metre
             tau : second
             I : 1
             '''
 
-        self.PC = NeuronGroup(self.p['rows'] * self.p['cols'], eqs_exc, threshold='v>v_thr_exc', reset='v = v_reset_exc', refractory=self.p["tau_refr_exc"], method='euler')
+        if self.model == 'Fairhall':
+            #If in case of Fairhall model, the threshold does not adapt.
+            self.PC = NeuronGroup(self.p['rows'] * self.p['cols'], eqs_exc, threshold='v>h', reset='v = v_reset_exc',
+                                  refractory=self.p["tau_refr_exc"], method='euler')
+        else:
+        # Here the threshold lowers if the neuron spikes
+            self.PC = NeuronGroup(self.p['rows'] * self.p['cols'], eqs_exc, threshold='v>h',
+                                  reset='v = v_reset_exc; h = h - 0.2', refractory=self.p["tau_refr_exc"],
+                                  method='euler')
 
         # initialize the grid positions
+
+        # Variables important for Brian purposes (the equations are written with strings).
         rows = self.p['rows']
         grid_dist = 4 * meter
         self.PC.tau = self.p['tau_dyn_exc']
@@ -151,6 +170,8 @@ class FirstModel:
         self.PC.y = '(i % rows) * grid_dist'
         #Initialises voltage
         self.PC.v = self.p['v_init_exc']
+        #self.PC.h = functions.convert_matrix_to_threshold(self.p['connection_matrix_S_fairhall'][0,:],self.p['rows'], self.p['cols'],self.p['v_thr_exc'] - 20, self.p['v_thr_exc'])
+        self.PC.h = functions.convert_list_to_threshold(self.p['connection_matrix_S'][0,:], self.p['v_thr_exc'] - 20, self.p['v_thr_exc'])
         self.PC.I = '0'
 
 
@@ -164,47 +185,57 @@ class FirstModel:
         self.INH = NeuronGroup(int(self.p['rows'] * self.p['cols'] / 10), eqs_inh, threshold='v>v_thr_inh',
                                reset='v = v_reset_inh', refractory=self.p['tau_refr_inh'], method='euler')
         self.INH.tau = self.p['tau_dyn_inh']
+        self.INH.v = self.p['v_reset_inh']
 
 
     # Initialises tonic input that will "draw" the trajectory.
     def _init_tonic_input_neurons(self):
+
         eqs_tonic = '''
-        dv/dt = ( - (v - v_leak_tonic)) / tau : 1
+        dv/dt = ( - h * (v - v_leak_tonic)) / tau : 1
+        dh/dt = (- 0.5 * h) / tau : 1
         tau : second
         '''
 
-        #self.p['rows']
-        self.G = NeuronGroup(self.p['rows'], eqs_tonic, threshold='v>v_thr_tonic', reset='v = v_reset_tonic',
+        self.G = NeuronGroup(self.p['num_tonic_neurons'], eqs_tonic, threshold='v>v_thr_tonic', reset='v = v_reset_tonic',
                              refractory=self.p['tau_refr_tonic'], method='euler')
-
+        self.G.h = 10
         self.G.tau = self.p['tau_dyn_tonic']
+        self.G.v = -80
+
+    def _init_random_input(self):
+        self.R = PoissonGroup(self.p['num_tonic_neurons'],rates=self.p['input_rate'])
 
 
     # Initialises external input. It should spread the spikes along the trajectory.
     def _init_external_input_neurons(self):
         eqs_ext_inp = '''
-        dv/dt = ( - (v - v_leak_ext)) / tau : 1
+        dv/dt = ( - h * (v - v_leak_ext)) / tau : 1
+        
+        dh/dt = (- h) / tau : 1
         tau : second
         '''
 
-        self.S = NeuronGroup(10, eqs_ext_inp, threshold='v>v_thr_ext', reset='v = v_reset_ext',
+        #
+        self.S = NeuronGroup(self.p['num_ext_neurons'], eqs_ext_inp, threshold='v>v_thr_ext', reset='v = v_reset_ext',
                              refractory=self.p['tau_refr_ext'], method='euler')
         self.S.tau = self.p['tau_dyn_ext']
-
+        self.S.h = 10
+        self.S.v = -80
 
     # Initialises all the synapses
-    def _init_synapses(self):
+    def _init_standard_synapses(self):
         # Needed for brian2 equations
         rows = self.p['rows']
         cols = self.p['cols']
-
+        weight = self.p['rec_weight']
         ###########################
         # EXC-EXC synapses
         ###########################
         self.SPC = Synapses(self.PC, self.PC, 'w:1', on_pre= 'v_post += w')
         self.SPC.connect('(( i // rows - j // rows)**2 + ( i % rows -  j % rows)**2 )< 4')
         #self.SPC.connect()
-        self.SPC.w = '5*exp(-((x_pre-x_post)**2+(y_pre - y_post)**2)/(30*metre)**2)'
+        self.SPC.w = 'weight*exp(-((x_pre-x_post)**2+(y_pre - y_post)**2)/(30*metre)**2)'
 
         # If already specified the delay to put, don't modify it.
         if self.delay!= None:
@@ -217,11 +248,16 @@ class FirstModel:
         ###########################
         # EXC-INH and INH-EXC synapses
         ###########################
-        self.SPCINH = Synapses(self.INH, self.PC, on_pre='v_post-=0.02')
-        self.SPCINH.connect(p=0.)
+        self.SPCINH = Synapses(self.INH, self.PC, 'w:1', on_pre='v_post-=w')
+        self.SPCINH.connect(p=0.5)
+        self.SPCINH.w = self.p["inh_weight_pi"]
 
-        self.SINHPC = Synapses(self.PC, self.INH, on_pre='v_post+=0.01')
-        self.SINHPC.connect(p=0.)
+        self.SINHPC = Synapses(self.PC, self.INH, 'w:1', on_pre='v_post+=w')
+        self.SINHPC.connect(p=0.5)
+
+        self.SINHPC.w = self.p["inh_weight_ip"]
+
+    def _init_tonic_synapses(self):
 
         ###########################
         # TONIC-EXC synapses
@@ -229,13 +265,11 @@ class FirstModel:
         #Draws the trajectory
 
 
-        #0.17
-        self.SPCG = Synapses(self.G, self.PC, on_pre='v_post+=0.157')
 
+        self.SPCG = Synapses(self.G, self.PC, 'w:1',on_pre='v_post+=w')
         if 'connection_matrix_G' in self.p.keys():
             sources, targets = functions.convert_matrix_to_source_target(self.p['connection_matrix_G'])
-        # synapses = Synapses(G, G, on_pre='v_post += 0.2')
-            self.SPCG.connect(i=sources, j=targets)
+            self.SPCG.connect(i=sources, j=targets, p=0.)
         else:
             eqs_spcg = '''
                     ((j % rows <= 17 and j%rows >= 15) and (j // rows <= 10 ))
@@ -244,10 +278,15 @@ class FirstModel:
                     '''
             self.SPCG.connect(eqs_spcg)
 
+        self.SPCG.w = self.p['tonic_weight']
+
+
+    def _init_fairhall_synapses(self):
+
         ###########################
         # EXTERNAL INP-EXC synapses
         ###########################
-        self.SS = Synapses(self.S, self.PC, on_pre='v_post+=0.5')
+        self.SS = Synapses(self.S, self.PC, 'w:1', on_pre='v_post+=0.5')
         # Triggers a few neurons in the trajectory.
         #self.SS.connect('((j % rows <= 17 and j%rows >= 15) and (j // rows == 0 ))')
         if 'connection_matrix_S' in self.p.keys():
@@ -257,40 +296,15 @@ class FirstModel:
         else:
             eqs_ss = '((j % rows >=4 and j % rows<=6) and (j // rows == 10 ))'
             self.SS.connect(eqs_ss)
+        self.SS.w = self.p['ext_weight']
         #self.SS.connect('j % rows == 5 and j // rows == 10')
 
-
-    # Not useful?
-    def __modify_synapses__(self, old_synapses, new_synapses, connection_matrix=[], eqs='nothing'):
-        functions.visualise_connectivity(old_synapses, "Pre change")
-        old_synapses = new_synapses
-        if eqs!='nothing':
-            old_synapses.connect(eqs)
-            functions.visualise_connectivity(old_synapses, "Post change eqs")
-        else:
-            # The connection matrix as a numpy array of 0's and 1's
-            sources, targets = connection_matrix.nonzero()
-            sources = np.array(sources)
-            targets = np.array(targets)
-            # synapses = Synapses(G, G, on_pre='v_post += 0.2')
-            old_synapses.connect(i=sources, j=targets)
-            functions.visualise_connectivity(old_synapses, "Post change matrix")
-
-    def modify_connectivity(self, var='SPC', connection_matrix=[], eqs='nothing'):
-        if var=='SPC':
-            new_synapses = Synapses(self.PC, self.PC, 'w:1', on_pre= 'v_post += w')
-            self.__modify_synapses__(self.SPC, new_synapses, connection_matrix, eqs)
-        elif var=='SPCINH':
-            new_synapses = Synapses(self.INH, self.PC, on_pre='v_post-=0.02')
-            self.__modify_synapses__(self.SPCINH, new_synapses, connection_matrix, eqs)
-        elif var=='SPCG':
-            new_synapses = Synapses(self.G, self.PC, on_pre='v_post+=0.17')
-            self.__modify_synapses__(self.SPCG, new_synapses, connection_matrix, eqs)
-        elif var=='S':
-            new_synapses = Synapses(self.S, self.PC, on_pre='v_post+=0.5')
-            self.__modify_synapses__(self.SS, new_synapses, connection_matrix, eqs)
-        else:
-            raise ValueError("No synapses called " + str(var))
+        ###########################
+        # RANDOM - EXC synapses
+        ###########################
+        self.SRPC = Synapses(self.R, self.PC, 'w:1', on_pre='v_post+=w')
+        self.SRPC.connect()
+        self.SRPC.w = self.p['R_weight']
 
     # TODO: Find better way to record spike moments
     def run(self, duration=50*ms, show_PC=False, show_other=False):
@@ -303,20 +317,30 @@ class FirstModel:
         #Records for all indices, used for recording spiking times.
         # TODO: Find better way to record spike moments
         self.MM = StateMonitor(self.PC, 'v', record=True)
+
+        if self.model == 'Fairhall':
+            if 'result_G' in self.p.keys():
+                # Records the G inputs of one cell.
+                self.MG = StateMonitor(self.G, 'v', record=0)
+                self.MthresholdG = StateMonitor(self.G, 'h', record=True)
+                self.spikemong = SpikeMonitor(self.G, variables='v', record=True)
+
+                self.G_all_values = self.spikemong.all_values()
         # Records the G inputs of one cell.
-        self.MG = StateMonitor(self.G, 'v', record=0)
-        # Records the G inputs of one cell.
-        self.MS = StateMonitor(self.S, 'v', record=0)
+            self.MS = StateMonitor(self.S, 'v', record=0)
+            self.spikemon_random = SpikeMonitor(self.R)
+            self.spikemons = SpikeMonitor(self.S, variables='v', record=True)
+
+            self.S_all_values = self.spikemons.all_values()
         # Records the inhibitory of one cell.
         self.MINH = StateMonitor(self.INH, 'v', record=0)
 
 
+        self.Mthreshold = StateMonitor(self.PC, 'h', record=True)
         # Records the spikes of Pyramidal cells.
         self.spikemon = SpikeMonitor(self.PC, variables='v', record=True)
         # Records the spikes of one inhibitory cell.
         self.spikemoninh = SpikeMonitor(self.INH,variables='v', record=True)
-        self.spikemong = SpikeMonitor(self.G, variables='v', record=True)
-        self.spikemons = SpikeMonitor(self.S,variables='v', record=True)
 
 
         # TODO : Find a way to be able to run several times
@@ -333,8 +357,6 @@ class FirstModel:
         # Records spiking information about different
         self.PC_all_values = self.spikemon.all_values()
         self.INH_all_values = self.spikemoninh.all_values()
-        self.G_all_values = self.spikemong.all_values()
-        self.S_all_values = self.spikemons.all_values()
 
 
         # Following line does not run because, the recorded voltages are empty.

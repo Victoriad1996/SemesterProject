@@ -2,11 +2,9 @@ from brian2 import exp, meter, ms
 from matplotlib.pyplot import*
 from numpy import*
 from math import isnan
-import warnings
 from opencvtry import cvWriter
 import matplotlib.pyplot as plt
-from IPython.display import Video
-
+import copy
 
 ######################### Basic Functions #########################
 
@@ -102,12 +100,13 @@ def normalize(l, lower=0, upper=1):
     return result, argmin_, argmax_
 
 # Plots the distribution of any list.
-def plot_distrib(my_list, name_title):
+def plot_distrib(my_list, name_title, my_xlabel=None):
     hist(my_list, color = 'blue', edgecolor = 'black',
          bins = int(180/5))
     title("Distribution of " + str(name_title))
+    if not my_xlabel is None:
+        xlabel(my_xlabel)
     show()
-
 def sgmd(x):
     """Sigmoid (logistic) function."""
 
@@ -135,8 +134,16 @@ def convert_matrix_pos_to_indices(number, my_matrix, rows, cols):
         if my_matrix[i%rows, i//rows] > 0:
             my_indices.append(i)
             result[:,i] = np.ones(number)
-
     return result
+
+
+def convert_list_to_threshold(my_list, threshold_trajectory, threshold_out):
+    for i in range(len(my_list)):
+        if my_list[i]>0:
+            my_list[i] = threshold_trajectory
+        else:
+            my_list[i] = threshold_out
+    return my_list
 
 def convert_matrix_to_source_target(my_matrix):
     sources, targets = my_matrix.nonzero()
@@ -195,7 +202,7 @@ def visualise_connectivity(S, mylegend):
     xlim(-1, Ns)
     ylim(-1, Nt)
     xlabel('Source neuron index')
-    ylabel('Target neuron index')
+    ylabel('Target neuron index', rotation='vertical')
     suptitle(mylegend)
     show()
 
@@ -222,6 +229,8 @@ def plot_connectivity(modelClass, list_synapses , my_title, neuron_idx = None):
         plot(modelClass.PC.x[neuron_idx] / meter, modelClass.PC.y[neuron_idx] / meter, color + '.', alpha=0.8, label="Main neuron")
 
     legend()
+    xlabel("meter")
+    ylabel("meter", rotation='vertical')
     title("Connectivity between PC and " + str(my_title))
 
 # Plot, with gradient color, the distance of each neurons to the "neuron_idx" neuron given in parameters.
@@ -231,7 +240,6 @@ def plot_distance(modelClass):
     my_list = list_distance(modelClass.PC, modelClass.neuron_idx)
     # Plots the distribution of this list of distances.
     plot_distrib(my_list, "distances")
-    show()
 
     # Marks the neuron_idx
     plot(modelClass.PC.x[modelClass.neuron_idx] / meter, modelClass.PC.y[modelClass.neuron_idx] / meter, 'o',
@@ -245,7 +253,7 @@ def plot_distance(modelClass):
     xlim(-10, modelClass.p['rows'])
     ylim(0, modelClass.p['cols'])
     xlabel('x')
-    ylabel('y', rotation='horizontal')
+    ylabel('y', rotation='vertical')
     axis('equal')
     title("Distance plot")
     show()
@@ -295,9 +303,9 @@ def video_spike_times(modelClass, spiking_index=0, plot_distribution=True, fileP
 
     list_frames = []
     for index_ in range(spiking_index + 1):
-        for j in range(10):
+        for j in range(100):
             # Create the frame
-            my_spikemon, argmin_, argmax_ = reshape_spiking_times(modelClass.spikemon, spiking_index=index_ ,lower_threshold=(j-1) * 10, upper_threshold= (j + 1) * 10)
+            my_spikemon, argmin_, argmax_ = reshape_spiking_times(modelClass.spikemon, spiking_index=index_ ,lower_threshold=(j-1) , upper_threshold= (j + 1) )
 
             list_matrix = normalize(my_spikemon, 10, 255)
             if len(list_matrix[0]) > 0:
@@ -324,7 +332,7 @@ def plot_spike_times(modelClass, spiking_index=0, threshold=0, plot_distribution
     # But for later plotting reasons, still need to return indices of first and last spiking times.
     # Thus returns (arbitrarily 0 and 1).
     if not modelClass.has_run:
-        raise ValueError("No spiking thus cannot compute the spike times")
+        raise ValueError("Class hasn't run thus cannot compute the spike times")
 
     color = 'r'
 
@@ -334,36 +342,39 @@ def plot_spike_times(modelClass, spiking_index=0, threshold=0, plot_distribution
 
     #list_matrix[0] = [int(el) for el in list_matrix[0]]
 
-    if plot_distribution:
-        plot_distrib(my_spikemon, "spiking times")
+
+    if len(normalized_times) >0:
+
+        if plot_distribution:
+            plot_distrib(my_spikemon, "spiking times", my_xlabel="Spiking time in ms")
+        # Just to plot the entire rectangle
+        n = modelClass.p['rows'] * modelClass.p['cols'] - 1
+        plot(modelClass.PC.x[0] / meter, modelClass.PC.y[0] / meter, '.', color='w')
+        plot(modelClass.PC.x[n] / meter, modelClass.PC.y[n] / meter, '.', color='w')
+
+
+        for j in range(modelClass.p['rows'] * modelClass.p['cols']):
+            plot(modelClass.PC.x[j] / meter , modelClass.PC.y[j] / meter, color + '.', alpha = 1 - normalized_times[j])
+
+
+        neuron_idx = modelClass.my_indices[0]
+        plot(modelClass.PC.x[neuron_idx] / meter, modelClass.PC.y[neuron_idx] / meter, '*',
+                  label=str(neuron_idx))
+
+        # Marks first and last to spike (among the ones that actually spiked).
+        plot(modelClass.PC.x[argmin_] / meter, modelClass.PC.y[argmin_] / meter, 'x', color='m', label="first")
+        plot(modelClass.PC.x[argmax_] / meter, modelClass.PC.y[argmax_] / meter, 'x', color='k', label="last")
+
+        xlim(-10, modelClass.p['rows'])
+        ylim(0, modelClass.p['cols'])
+        xlabel('x in meter')
+        ylabel('y in meters', rotation='vertical')
+        axis('equal')
+        title("Spiking time of cells")
+        legend()
         show()
-
-    # Just to plot the entire rectangle
-    n = modelClass.p['rows'] * modelClass.p['cols'] - 1
-    plot(modelClass.PC.x[0] / meter, modelClass.PC.y[0] / meter, '.', color='w')
-    plot(modelClass.PC.x[n] / meter, modelClass.PC.y[n] / meter, '.', color='w')
-
-
-    for j in range(modelClass.p['rows'] * modelClass.p['cols']):
-        plot(modelClass.PC.x[j] / meter , modelClass.PC.y[j] / meter, color + '.', alpha = 1 - normalized_times[j])
-
-
-    neuron_idx = modelClass.my_indices[0]
-    plot(modelClass.PC.x[neuron_idx] / meter, modelClass.PC.y[neuron_idx] / meter, '*',
-              label=str(neuron_idx))
-
-    # Marks first and last to spike (among the ones that actually spiked).
-    plot(modelClass.PC.x[argmin_] / meter, modelClass.PC.y[argmin_] / meter, 'x', color='m', label="first")
-    plot(modelClass.PC.x[argmax_] / meter, modelClass.PC.y[argmax_] / meter, 'x', color='k', label="last")
-
-    xlim(-10, modelClass.p['rows'])
-    ylim(0, modelClass.p['cols'])
-    xlabel('x')
-    ylabel('y', rotation='horizontal')
-    axis('equal')
-    title("Spiking time of cells")
-    legend()
-    show()
+    else:
+        print("No neuron spiked.")
 
 
 # Computes first spiking times of neurons, given their voltages recording.
@@ -384,28 +395,6 @@ def spiking_times_fun(modelClass, type_='PC'):
     elif type_ == 'INH':
         modelClass.INH_first_spike =reshape_spiking_times(modelClass.spikemoninh)[1]
         modelClass.INH_last_spike = reshape_spiking_times(modelClass.spikemoninh)[2]
-
-
-def record_spikes(modelClass, threshold=-36.1, type_='PC', index=0):
-    if not modelClass.has_run:
-        raise ValueError("Cannot record the spiking times if the network did not ran yet.")
-
-    spike_time = []
-    if type_ == 'PC':
-        if len(list(np.where(modelClass.MM.v[index] >= threshold))[0]) > 0:
-            spike_time = list(np.where(modelClass.MM.v[index] >= threshold))[0].tolist()
-
-        # Record spiking times of G inputs
-    elif type_ == 'G':
-        if len(list(np.where(modelClass.MG.v[0] >= threshold))) > 0:
-            spike_time = list(np.where(modelClass.MG.v[0] >= threshold))[0].tolist()
-
-        # Record spiking times of Inhibitory inputs
-    elif type_ == 'INH':
-        if len(list(np.where(modelClass.MINH.v[0] >= threshold))[0]) > 0:
-            spike_time = list(np.where(modelClass.MINH.v[0] >= threshold))[0].tolist()
-
-    return spike_time
 
 
 def plot_voltages_PC(modelClass, plot_last_first=True, new_indices=[]):
@@ -430,6 +419,8 @@ def plot_voltages_PC(modelClass, plot_last_first=True, new_indices=[]):
 
     legend()
     title("Voltage of Pyramidal cells")
+    xlabel("Time in ms")
+    ylabel("Voltage", rotation='vertical')
     show()
 
 def plot_voltages_other_types(modelClass, type_list=['G', 'S', 'INH'], my_indices=[0]):
@@ -454,9 +445,27 @@ def plot_voltages_other_types(modelClass, type_list=['G', 'S', 'INH'], my_indice
             for i in my_indices:
                 my_plot = plot(modelClass.MS.t / ms, modelClass.MS.v[i], label='S' + str(i))
             plot(modelClass.S_all_values['t'][0] / ms, modelClass.S_all_values['v'][0], 'o',color=my_plot[0].get_color())
+        elif type_ == 'threshold':
+            for i in my_indices:
+                my_plot = plot(modelClass.Mthreshold.t / ms, modelClass.Mthreshold.h[i], label='Threshold for PC '+str(i)+ 'cell.')
+            #plot(modelClass.MthresholdG.t / ms, modelClass.MthresholdG.h[0], label='Threshold for G cell.')
         else:
             raise ValueError("Type must be 'PC', 'G' , 'INH' or 'S' ")
 
     title(my_title)
+    xlabel("Time in ms")
+    ylabel("Voltage", rotation='vertical')
     legend()
     show()
+
+def add_params(params, rec_weight=4.5, ext_weight=0.5, R_weight=0.7, inh_weight_pi=0.02, inh_weight_ip=0.01):
+
+    new_params = copy.deepcopy(params)
+    new_params['rec_weight'] = rec_weight
+    new_params['ext_weight'] = ext_weight
+    new_params['R_weight'] = R_weight
+    new_params['inh_weight_pi'] = inh_weight_pi
+    new_params['inh_weight_ip'] = inh_weight_ip
+
+    print(new_params['rec_weight'], new_params['ext_weight'], new_params['R_weight'], new_params['inh_weight_pi'], new_params['inh_weight_ip'])
+    return new_params
