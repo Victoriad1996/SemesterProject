@@ -4,7 +4,13 @@ import functions
 class FirstModel:
     def __init__(self, param, model="Fairhall"):
         self.model = model
-
+        self.reshaped_spikemon = None
+        self.variance_spike_times = None
+        self.mean_spike_times = None
+        self.number_spiking_cells = None
+        self.number_spiking_outside_trajectory = None
+        self.variance_spikes_trajectory = None
+        self.mean_spikes_trajectory = None
         self.p = self._complete_parameters(param)
         self.has_run = False
         self.delay = None
@@ -16,13 +22,15 @@ class FirstModel:
         self._init_inhibitory_neurons()
         self._init_standard_synapses()
         if self.model=="Fairhall":
-            self._init_tonic_input_neurons()
             self._init_external_input_neurons()
-            self._init_random_input()
-            self._init_fairhall_synapses()
+            self._init_external_input_synapses()
             if 'result_G' in self.p.keys():
                 self.G_spiking_times = None
+                self._init_tonic_input_neurons()
                 self._init_tonic_synapses()
+            else:
+                self._init_random_input()
+                self._init_random_synapses()
 
         self.neuron_idx = 50
         self.my_indices = functions.some_indices(self.neuron_idx)
@@ -281,7 +289,7 @@ class FirstModel:
         self.SPCG.w = self.p['tonic_weight']
 
 
-    def _init_fairhall_synapses(self):
+    def _init_external_input_synapses(self):
 
         ###########################
         # EXTERNAL INP-EXC synapses
@@ -299,6 +307,7 @@ class FirstModel:
         self.SS.w = self.p['ext_weight']
         #self.SS.connect('j % rows == 5 and j // rows == 10')
 
+    def _init_random_synapses(self):
         ###########################
         # RANDOM - EXC synapses
         ###########################
@@ -368,3 +377,4 @@ class FirstModel:
             functions.plot_voltages_PC(self)
         if show_other:
             functions.plot_voltages_other_types(self)
+

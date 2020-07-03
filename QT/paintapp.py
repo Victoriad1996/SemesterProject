@@ -32,6 +32,7 @@ class Window(QMainWindow):
         self.mode = "Scribble"
         self.node = None
         self.square = []
+        self.img = None
 
         mainMenu = self.menuBar()
         fileMenu = mainMenu.addMenu("File")
@@ -161,6 +162,7 @@ class Window(QMainWindow):
         plt.figure()
         plt.imshow(img)
         plt.show()
+        self.img = img
 
     # Convert QImage to numpy array
     def _QImage2numpy(self, src):

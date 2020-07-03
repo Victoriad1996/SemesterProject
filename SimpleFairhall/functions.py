@@ -138,12 +138,11 @@ def convert_matrix_pos_to_indices(number, my_matrix, rows, cols):
 
 
 def convert_list_to_threshold(my_list, threshold_trajectory, threshold_out):
+    new_list = [threshold_out] * len(my_list)
     for i in range(len(my_list)):
         if my_list[i]>0:
-            my_list[i] = threshold_trajectory
-        else:
-            my_list[i] = threshold_out
-    return my_list
+            new_list[i] = threshold_trajectory
+    return new_list
 
 def convert_matrix_to_source_target(my_matrix):
     sources, targets = my_matrix.nonzero()
@@ -337,6 +336,7 @@ def plot_spike_times(modelClass, spiking_index=0, threshold=0, plot_distribution
     color = 'r'
 
     my_spikemon, argmin_, argmax_  = reshape_spiking_times(modelClass.spikemon, spiking_index=spiking_index, lower_threshold=threshold)
+    modelClass.reshaped_spikemon = my_spikemon
     normalized_times, min_, max_ = normalize(my_spikemon, 0, 0.9)
 
 
@@ -375,6 +375,38 @@ def plot_spike_times(modelClass, spiking_index=0, threshold=0, plot_distribution
         show()
     else:
         print("No neuron spiked.")
+
+
+    variance_mean_spike_times(modelClass)
+    len_spike(modelClass)
+    number_spikes_outside_trajectoy(modelClass)
+
+
+def variance_mean_spike_times(modelClass):
+    my_list = [i for i in modelClass.reshaped_spikemon if not np.isnan(i)]
+    modelClass.variance_spike_times = np.var(my_list)
+    modelClass.mean_spike_times = np.mean(my_list)
+
+def len_spike(modelClass):
+    my_list = [i for i in modelClass.reshaped_spikemon if not np.isnan(i)]
+    modelClass.number_spiking_cells = len(my_list)
+
+
+def number_spikes_outside_trajectoy(modelClass):
+    color = 'b'
+    result = []
+    for i in range(modelClass.p['rows'] * modelClass.p['cols']):
+        if (not np.isnan(modelClass.reshaped_spikemon[i]) ) and modelClass.p['connection_matrix_S'][0,i] == 0 :
+            plot(modelClass.PC.x[i] / meter, modelClass.PC.y[i] / meter, color + '.')
+            result.append(modelClass.reshaped_spikemon[i])
+
+    title('Cells that spike outside the trajectory')
+    xlabel('m')
+    ylabel('m', rotation='vertical')
+    show()
+    modelClass.number_spiking_outside_trajectory = len(result)
+    modelClass.variance_spikes_trajectory = np.var(result)
+    modelClass.mean_spikes_trajectory = np.mean(result)
 
 
 # Computes first spiking times of neurons, given their voltages recording.
@@ -466,6 +498,6 @@ def add_params(params, rec_weight=4.5, ext_weight=0.5, R_weight=0.7, inh_weight_
     new_params['R_weight'] = R_weight
     new_params['inh_weight_pi'] = inh_weight_pi
     new_params['inh_weight_ip'] = inh_weight_ip
-
+    print('rec_weight + ext_weight + R_weight + inh_weight_pi + inh_weight_ip')
     print(new_params['rec_weight'], new_params['ext_weight'], new_params['R_weight'], new_params['inh_weight_pi'], new_params['inh_weight_ip'])
     return new_params
