@@ -28,9 +28,9 @@ class FirstModel:
                 self.G_spiking_times = None
                 self._init_tonic_input_neurons()
                 self._init_tonic_synapses()
-            else:
-                self._init_random_input()
-                self._init_random_synapses()
+        else:
+            self._init_random_input()
+            self._init_random_synapses()
 
         self.neuron_idx = 50
         self.my_indices = functions.some_indices(self.neuron_idx)
@@ -101,6 +101,7 @@ class FirstModel:
             "tau_refr_tonic" : 2 * ms,    # Refractory period
             "gi_tonic" : 1,               # ???
             "tonic_weight" : 0.2,         # Tonic weight
+            "thresh_step" : 0.2,
 
             # External Input Neurons
             "num_ext_neurons" : 10, # Number of external input neurons
@@ -151,6 +152,7 @@ class FirstModel:
         eqs_exc = '''
             dv/dt = (I - (v - v_leak_exc)) / tau : 1
             h : 1
+            thresh_step : 1
             x : metre
             y : metre
             tau : second
@@ -164,8 +166,9 @@ class FirstModel:
         else:
         # Here the threshold lowers if the neuron spikes
             self.PC = NeuronGroup(self.p['rows'] * self.p['cols'], eqs_exc, threshold='v>h',
-                                  reset='v = v_reset_exc; h = h - 0.2', refractory=self.p["tau_refr_exc"],
+                                  reset='v = v_reset_exc; h = h - thresh_step', refractory=self.p["tau_refr_exc"],
                                   method='euler')
+            self.PC.thresh_step = self.p['thresh_step']
 
         # initialize the grid positions
 
@@ -337,10 +340,12 @@ class FirstModel:
                 self.G_all_values = self.spikemong.all_values()
         # Records the G inputs of one cell.
             self.MS = StateMonitor(self.S, 'v', record=0)
-            self.spikemon_random = SpikeMonitor(self.R)
             self.spikemons = SpikeMonitor(self.S, variables='v', record=True)
 
             self.S_all_values = self.spikemons.all_values()
+        else:
+
+            self.spikemon_random = SpikeMonitor(self.R)
         # Records the inhibitory of one cell.
         self.MINH = StateMonitor(self.INH, 'v', record=0)
 

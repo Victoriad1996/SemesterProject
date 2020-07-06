@@ -173,6 +173,12 @@ class Window(QMainWindow):
             return
         self.image.save(filePath)
 
+    def default_save(self):
+        filePath = './new_trajectory.png'
+        if filePath == "":
+            return
+        self.image.save(filePath)
+
     def clear(self):
         self.image.fill(Qt.white)
         self.node = None
@@ -200,11 +206,12 @@ if __name__ == "__main__":
     window.show()
     app.exec()
     frame_img = window.img
+
+    window.default_save()
     #Red
     Gresult = functions.reduce_matrix(frame_img[:, :, 1], 10)
     #Green
     Sresult = functions.reduce_matrix(frame_img[:,:,0],10 )
-
 
 
     plt.imshow(Gresult)

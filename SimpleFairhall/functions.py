@@ -490,7 +490,7 @@ def plot_voltages_other_types(modelClass, type_list=['G', 'S', 'INH'], my_indice
     legend()
     show()
 
-def add_params(params, rec_weight=4.5, ext_weight=0.5, R_weight=0.7, inh_weight_pi=0.02, inh_weight_ip=0.01):
+def add_params(params, rec_weight=4.5, ext_weight=0.5, R_weight=0.4, inh_weight_pi=0.02, inh_weight_ip=0.01):
 
     new_params = copy.deepcopy(params)
     new_params['rec_weight'] = rec_weight
@@ -498,6 +498,6 @@ def add_params(params, rec_weight=4.5, ext_weight=0.5, R_weight=0.7, inh_weight_
     new_params['R_weight'] = R_weight
     new_params['inh_weight_pi'] = inh_weight_pi
     new_params['inh_weight_ip'] = inh_weight_ip
-    print('rec_weight + ext_weight + R_weight + inh_weight_pi + inh_weight_ip')
-    print(new_params['rec_weight'], new_params['ext_weight'], new_params['R_weight'], new_params['inh_weight_pi'], new_params['inh_weight_ip'])
+    #print('rec_weight + ext_weight + R_weight + inh_weight_pi + inh_weight_ip')
+    #print(new_params['rec_weight'], new_params['ext_weight'], new_params['R_weight'], new_params['inh_weight_pi'], new_params['inh_weight_ip'])
     return new_params
