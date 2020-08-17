@@ -135,7 +135,6 @@ class FirstModel:
 
         return pnew
 
-
     def _param_sanity_checks(self, p):
         pass
 
@@ -166,8 +165,9 @@ class FirstModel:
         else:
         # Here the threshold lowers if the neuron spikes
             self.PC = NeuronGroup(self.p['rows'] * self.p['cols'], eqs_exc, threshold='v>h',
-                                  reset='v = v_reset_exc; h = h - thresh_step', refractory=self.p["tau_refr_exc"],
+                                  reset='v = v_reset_exc; h = h -100', refractory=self.p["tau_refr_exc"],
                                   method='euler')
+        #thresh_step
             self.PC.thresh_step = self.p['thresh_step']
 
         # initialize the grid positions
@@ -215,7 +215,19 @@ class FirstModel:
         self.G.v = -80
 
     def _init_random_input(self):
-        self.R = PoissonGroup(self.p['num_tonic_neurons'],rates=self.p['input_rate'])
+        #self.R = PoissonGroup(self.p['num_tonic_neurons'],rates=self.p['input_rate'])
+
+        eqs_tonic = '''
+        dv/dt = ( - h * (v - v_leak_tonic)) / tau : 1
+        dh/dt = (- 0.5 * h) / tau : 1
+        tau : second
+        '''
+
+        self.R = NeuronGroup(self.p['num_tonic_neurons'], eqs_tonic, threshold='v>v_thr_tonic', reset='v = v_reset_tonic',
+                             refractory=50*ms, method='euler')
+        self.R.h = 10
+        self.R.tau = self.p['tau_dyn_tonic']
+        self.R.v = -80
 
 
     # Initialises external input. It should spread the spikes along the trajectory.
@@ -315,8 +327,9 @@ class FirstModel:
         # RANDOM - EXC synapses
         ###########################
         self.SRPC = Synapses(self.R, self.PC, 'w:1', on_pre='v_post+=w')
-        self.SRPC.connect()
-        self.SRPC.w = self.p['R_weight']
+        self.SRPC.connect(p=0.001)
+        self.SRPC.w = 30
+        #self.SRPC.w = self.p['R_weight']
 
     # TODO: Find better way to record spike moments
     def run(self, duration=50*ms, show_PC=False, show_other=False):

@@ -260,6 +260,42 @@ def plot_distance(modelClass):
 
 ###### Cells activity ######
 
+def reshape_spiking_times_(my_spikemon,  lower_threshold=0, upper_threshold=np.infty):
+    result = []
+    min_ = inf
+    max_ = -1.
+
+    argmin_ = 0
+    argmax_ = 0
+
+    n = len(my_spikemon.values('t'))
+    for i in range(n):
+
+        my_result = nan
+        for spiking_index in range(4):
+
+            if len(my_spikemon.values('t')[i] / ms) > spiking_index:
+                spike_time = my_spikemon.values('t')[i][spiking_index] / ms
+
+                if spike_time >= lower_threshold and spike_time <= upper_threshold:
+                    my_result = spike_time
+                    if spike_time <= min_:
+                        argmin_ = i
+                        min_ = spike_time
+                    elif spike_time >= max_:
+                        argmax_ = i
+                        max_ = spike_time
+                else:
+                    my_result = nan
+        result.append(my_result)
+
+    if len(result) == 0:
+        raise Warning("No spikes")
+
+    return result, argmin_, argmax_
+
+
+
 def reshape_spiking_times (my_spikemon, spiking_index=0, lower_threshold=0, upper_threshold=np.infty):
     result = []
     min_ = inf
@@ -289,6 +325,42 @@ def reshape_spiking_times (my_spikemon, spiking_index=0, lower_threshold=0, uppe
         raise Warning("No spikes")
 
     return result, argmin_, argmax_
+
+def test_spike_times(modelClass,  filePathName="./video_spikes.mp4"):
+    if not modelClass.has_run:
+        raise ValueError("No spiking thus cannot compute the spike times")
+
+    n = modelClass.p['rows'] * modelClass.p['cols'] - 1
+
+    height = np.int(modelClass.PC.x[n] / meter)
+    width = np.int(modelClass.PC.y[n] / meter)
+
+
+    list_frames = []
+    for j in range(100):
+        # Create the frame
+        my_spikemon, argmin_, argmax_ = reshape_spiking_times_(modelClass.spikemon,lower_threshold=(j-1) , upper_threshold= (j + 1) )
+
+        list_matrix = normalize(my_spikemon, 10, 255)
+        if len(list_matrix[0]) > 0:
+            for i in range(len(list_matrix[0])):
+                if np.isnan(list_matrix[0][i]):
+                    list_matrix[0][i] = 0
+                else:
+                    list_matrix[0][i] = 250
+
+            Excitatory_matrix = np.zeros([np.int(modelClass.PC.y[n] / meter), np.int(modelClass.PC.x[n] / meter)])
+
+            for i in range(modelClass.p['rows'] * modelClass.p['cols']):
+                variable = list_matrix[0][i]
+                Excitatory_matrix[np.int(modelClass.PC.y[n] / meter) - np.int(modelClass.PC.y[i] / meter) - 1, np.int(modelClass.PC.x[i] / meter) - 1] = variable
+            list_frames.append(Excitatory_matrix)
+
+    convert_to_movie(list_frames,  height=height,width=width, filePathName=filePathName)
+
+    return list_frames, height, width
+
+
 
 def video_spike_times(modelClass, spiking_index=0, plot_distribution=True, filePathName="./video_spikes.mp4"):
     if not modelClass.has_run:
