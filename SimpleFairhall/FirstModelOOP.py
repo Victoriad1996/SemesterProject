@@ -32,6 +32,10 @@ class FirstModel:
             self._init_random_input()
             self._init_random_synapses()
 
+            self.G_spiking_times = None
+            self._init_tonic_input_neurons()
+            self._init_tonic_synapses()
+
         self.neuron_idx = 50
         self.my_indices = functions.some_indices(self.neuron_idx)
 
@@ -70,6 +74,7 @@ class FirstModel:
         genericParam = {
             'rows' : 20,
             'cols' : 30,
+            "thresh_step": 0.2,
 
             # Excitatory neurons
             "v_init_exc" : -60,         # Initial value of potential
@@ -79,10 +84,11 @@ class FirstModel:
             'tau_dyn_exc' : 50 * ms,    # Leak timescale
             "tau_refr_exc" : 8 * ms,    # Refractory period
             "r_max_exc" : 20 * Hz,      # Maximum rate
-            'rec_weight' : 4.5,         # Recurrent weight
+            'rec_weight' : 7,         # Recurrent weight
             "lambda_PL_exc" : 0.15 * metre,    # ???
 
             # Inhibitory neurons
+            "num_inhib_neurons" : 10,
             "v_leak_inh" : -10,         # Leak potential
             "v_reset_inh": -80,         # Reset potential
             "v_thr_inh" : -50,          # Spiking threshold
@@ -100,8 +106,7 @@ class FirstModel:
             'tau_dyn_tonic': 5 * ms,      # Leak timescale
             "tau_refr_tonic" : 2 * ms,    # Refractory period
             "gi_tonic" : 1,               # ???
-            "tonic_weight" : 0.2,         # Tonic weight
-            "thresh_step" : 0.2,
+            "tonic_weight" : 0.03,         # Tonic weight
 
             # External Input Neurons
             "num_ext_neurons" : 10, # Number of external input neurons
@@ -114,9 +119,13 @@ class FirstModel:
             "ext_weight" : 0.5,
 
             # Random inputs
-
+            "num_random_neurons" : 20,
+            "v_leak_random" : -30, # Leak potential
+            "v_reset_random" : -80,        # Reset potential
+            "v_thr_random": -50,  # Spiking threshold
             "input_rate" : 50*Hz, # Rate of spikes for the
-            'R_weight' : 0.7,
+            'R_weight' : 15,
+            "tau_dyn_random" : 5 * ms,      # Leak timescale
 
             # Synapses
             "w_PC" : 0.5,           # Recurrent weight from PC to PC
@@ -148,24 +157,27 @@ class FirstModel:
 
     # Initialises the pyramidal neurons as a Brian2 NeuronGroup.
     def _init_pyramidal_neurons(self):
+
+        #v_leak_exc
         eqs_exc = '''
-            dv/dt = (I - (v - v_leak_exc)) / tau : 1
+            dv/dt = (- (v - I)) / tau : 1
             h : 1
+            I : 1
             thresh_step : 1
             x : metre
             y : metre
             tau : second
-            I : 1
             '''
 
         if self.model == 'Fairhall':
             #If in case of Fairhall model, the threshold does not adapt.
-            self.PC = NeuronGroup(self.p['rows'] * self.p['cols'], eqs_exc, threshold='v>h', reset='v = v_reset_exc',
+            #v_reset_exc
+            self.PC = NeuronGroup(self.p['rows'] * self.p['cols'], eqs_exc, threshold='v>h', reset='v = I',
                                   refractory=self.p["tau_refr_exc"], method='euler')
         else:
         # Here the threshold lowers if the neuron spikes
             self.PC = NeuronGroup(self.p['rows'] * self.p['cols'], eqs_exc, threshold='v>h',
-                                  reset='v = v_reset_exc; h = h -100', refractory=self.p["tau_refr_exc"],
+                                  reset='v = v_reset_exc; h = h - 10', refractory=self.p["tau_refr_exc"],
                                   method='euler')
         #thresh_step
             self.PC.thresh_step = self.p['thresh_step']
@@ -182,9 +194,8 @@ class FirstModel:
         #Initialises voltage
         self.PC.v = self.p['v_init_exc']
         #self.PC.h = functions.convert_matrix_to_threshold(self.p['connection_matrix_S_fairhall'][0,:],self.p['rows'], self.p['cols'],self.p['v_thr_exc'] - 20, self.p['v_thr_exc'])
-        self.PC.h = functions.convert_list_to_threshold(self.p['connection_matrix_S'][0,:], self.p['v_thr_exc'] - 20, self.p['v_thr_exc'])
-        self.PC.I = '0'
-
+        self.PC.h = functions.convert_list_to_threshold(self.p['connection_matrix_S'][0,:], self.p['v_thr_exc'] -20 , self.p['v_thr_exc'])
+        self.PC.I = functions.convert_list_to_threshold(self.p['connection_matrix_S'][0, :], -45,-68)
 
     # Initialises the inhibitory neurons as a Brian2 NeuronGroup.
     def _init_inhibitory_neurons(self):
@@ -205,10 +216,12 @@ class FirstModel:
         eqs_tonic = '''
         dv/dt = ( - h * (v - v_leak_tonic)) / tau : 1
         dh/dt = (- 0.5 * h) / tau : 1
+        
         tau : second
         '''
 
-        self.G = NeuronGroup(self.p['num_tonic_neurons'], eqs_tonic, threshold='v>v_thr_tonic', reset='v = v_reset_tonic',
+        self.G = NeuronGroup(self.p['num_tonic_neurons'], eqs_tonic, threshold='v>v_thr_tonic',
+                             reset='v = v_reset_tonic',
                              refractory=self.p['tau_refr_tonic'], method='euler')
         self.G.h = 10
         self.G.tau = self.p['tau_dyn_tonic']
@@ -218,15 +231,13 @@ class FirstModel:
         #self.R = PoissonGroup(self.p['num_tonic_neurons'],rates=self.p['input_rate'])
 
         eqs_tonic = '''
-        dv/dt = ( - h * (v - v_leak_tonic)) / tau : 1
-        dh/dt = (- 0.5 * h) / tau : 1
+        dv/dt = ( - (v - v_leak_random)) / tau : 1
         tau : second
         '''
 
-        self.R = NeuronGroup(self.p['num_tonic_neurons'], eqs_tonic, threshold='v>v_thr_tonic', reset='v = v_reset_tonic',
+        self.R = NeuronGroup(self.p['num_random_neurons'], eqs_tonic, threshold='v>v_thr_random', reset='v = v_reset_tonic',
                              refractory=50*ms, method='euler')
-        self.R.h = 10
-        self.R.tau = self.p['tau_dyn_tonic']
+        self.R.tau = self.p['tau_dyn_random']
         self.R.v = -80
 
 
@@ -282,25 +293,29 @@ class FirstModel:
 
     def _init_tonic_synapses(self):
 
+        """
+
+                self.SPCG = Synapses(self.G, self.PC, 'w:1',on_pre='v_post+=w')
+                if 'connection_matrix_G' in self.p.keys():
+                    sources, targets = functions.convert_matrix_to_source_target(self.p['connection_matrix_G'])
+                    self.SPCG.connect(i=sources, j=targets, p=0.)
+                else:
+                    eqs_spcg = '''
+                            ((j % rows <= 17 and j%rows >= 15) and (j // rows <= 10 ))
+                            or ((j // rows >= 8 and j // rows <= 10) and (j % rows <= 15 and j % rows >= 4))
+                            or ((j//rows>= 10) and (j % rows >=4 and j % rows<=6))
+                            '''
+                    self.SPCG.connect(eqs_spcg)
+
+                self.SPCG.w = self.p['tonic_weight']
+        """
         ###########################
         # TONIC-EXC synapses
         ###########################
         #Draws the trajectory
 
-
-
         self.SPCG = Synapses(self.G, self.PC, 'w:1',on_pre='v_post+=w')
-        if 'connection_matrix_G' in self.p.keys():
-            sources, targets = functions.convert_matrix_to_source_target(self.p['connection_matrix_G'])
-            self.SPCG.connect(i=sources, j=targets, p=0.)
-        else:
-            eqs_spcg = '''
-                    ((j % rows <= 17 and j%rows >= 15) and (j // rows <= 10 ))
-                    or ((j // rows >= 8 and j // rows <= 10) and (j % rows <= 15 and j % rows >= 4))
-                    or ((j//rows>= 10) and (j % rows >=4 and j % rows<=6))
-                    '''
-            self.SPCG.connect(eqs_spcg)
-
+        self.SPCG.connect(p=0.5)
         self.SPCG.w = self.p['tonic_weight']
 
 
@@ -309,13 +324,14 @@ class FirstModel:
         ###########################
         # EXTERNAL INP-EXC synapses
         ###########################
-        self.SS = Synapses(self.S, self.PC, 'w:1', on_pre='v_post+=0.5')
+        self.SS = Synapses(self.S, self.PC, 'w:1', on_pre='v_post+=w')
         # Triggers a few neurons in the trajectory.
         #self.SS.connect('((j % rows <= 17 and j%rows >= 15) and (j // rows == 0 ))')
         if 'connection_matrix_S' in self.p.keys():
             sources, targets = functions.convert_matrix_to_source_target(self.p['connection_matrix_S'])
             # synapses = Synapses(G, G, on_pre='v_post += 0.2')
-            self.SS.connect(i=sources, j=targets)
+            #self.SS.connect(i=sources, j=targets, p=0.)
+            self.SS.connect(p=0.)
         else:
             eqs_ss = '((j % rows >=4 and j % rows<=6) and (j // rows == 10 ))'
             self.SS.connect(eqs_ss)
@@ -327,8 +343,8 @@ class FirstModel:
         # RANDOM - EXC synapses
         ###########################
         self.SRPC = Synapses(self.R, self.PC, 'w:1', on_pre='v_post+=w')
-        self.SRPC.connect(p=0.001)
-        self.SRPC.w = 30
+        self.SRPC.connect(p=0.01)
+        self.SRPC.w = 15
         #self.SRPC.w = self.p['R_weight']
 
     # TODO: Find better way to record spike moments
@@ -362,7 +378,7 @@ class FirstModel:
         # Records the inhibitory of one cell.
         self.MINH = StateMonitor(self.INH, 'v', record=0)
 
-
+        #self.v_thres = StateMonitor(self.PC, 'v_leak_exc', record=0)
         self.Mthreshold = StateMonitor(self.PC, 'h', record=True)
         # Records the spikes of Pyramidal cells.
         self.spikemon = SpikeMonitor(self.PC, variables='v', record=True)
@@ -393,6 +409,9 @@ class FirstModel:
 
         if show_PC:
             functions.plot_voltages_PC(self)
+            #my_plot = plot(self.MPC.t / ms, self.MPC.v, label='PC v_leak_exc' )
+            #show()
+
         if show_other:
             functions.plot_voltages_other_types(self)
 

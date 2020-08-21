@@ -149,7 +149,7 @@ class Window(QMainWindow):
             painter.setPen(QPen(self.brushColor, self.brushSize, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
             if self.mode == "Scribble":
                 painter.drawLine(self.lastPoint, position)
-                print(QPoint(position))
+                #print(QPoint(position))
                 self.lastPoint = position
             self.update()
 
@@ -184,11 +184,12 @@ class Window(QMainWindow):
         self.node = None
         self.update()
 
-    def getMatrix(self):
+    def getMatrix(self, show_=False):
         img = self._QImage2numpy(self.image)
-        plt.figure()
-        plt.imshow(img)
-        plt.show()
+        if show_:
+            plt.figure()
+            plt.imshow(img)
+            plt.show()
         self.img = img
 
     # Convert QImage to numpy array
@@ -200,13 +201,46 @@ class Window(QMainWindow):
         return(arr)
 
 
+def create_trajectory(show_=False):
+
+    app = QApplication(sys.argv)
+    window = Window()
+    window.show()
+    app.exec()
+
+    window.getMatrix()
+    frame_img = window.img
+
+    window.default_save()
+    #Green
+    Sresult = functions.reduce_matrix(frame_img[:,:,0],10 )
+
+
+    plt.imshow(frame_img[:,:,0])
+    plt.title("Trajectory in the pyramidal cells")
+    plt.xlabel("meters")
+    plt.ylabel("meters")
+    plt.show()
+
+    if show_ :
+        plt.imshow(Sresult)
+        plt.title("S legend")
+
+
+    np.save('S_inputs.npy', Sresult)
+
+    result_S = functions.create_trajectory_matrix('S_inputs.npy')
+
+    return result_S
+
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = Window()
     window.show()
     app.exec()
     frame_img = window.img
-
     window.default_save()
     #Red
     Gresult = functions.reduce_matrix(frame_img[:, :, 1], 10)
