@@ -1,7 +1,7 @@
 from brian2 import exp, meter, ms, NeuronGroup, Synapses, SpikeMonitor, start_scope
-from Fairhall import FairhallModel
+#from Fairhall import FairhallModel
 from Model import Model
-from ThresholdModel import ThresholdModel
+#from ThresholdModel import ThresholdModel
 from matplotlib.pyplot import*
 from numpy import*
 from math import isnan
@@ -9,8 +9,9 @@ from opencvtry import cvWriter
 import matplotlib.pyplot as plt
 import copy
 from IPython.display import Video
+from time import time
 
-from typing import Tuple, List, Union
+from typing import Tuple, Union
 
 ######################### Basic Functions #########################
 
@@ -184,6 +185,8 @@ def sgmd(x:float) -> float:
 
     return 1 / (1 + np.exp(-x))
 
+
+######################## Converting functions ##########################""
 def reduce_matrix(my_matrix : np.array, divisor: int) -> np.array:
     """
     Reduces a matrix (takes 1/divisor of its elements).
@@ -264,6 +267,24 @@ def convert_matrix_to_source_target(my_matrix : np.array) -> Tuple[np.array, np.
     targets = np.array(targets)
     return sources, targets
 
+def convert_neg_matrix_to_source_target(my_matrix : np.array) -> Tuple[np.array, np.array]:
+    """
+    Converts a matrix into two arrays that give the indices of the non zero elements.
+    (Source[i], Target[i]) gives the position of a non zero element.
+    :param my_matrix: A matrix of zero or non zero elements.
+    :type my_matrix: np.array
+    :return: Two arrays of indices that indicate the non zero indices of the matrix
+    :rtype: Tuple[np.array, np.array]
+    """
+
+    # Return the indices of the elements that are non-zero.
+    I = np.ones(my_matrix.shape)
+    neg_matrix = I - my_matrix
+    sources, targets = neg_matrix.nonzero()
+    sources = np.array(sources)
+    targets = np.array(targets)
+    return sources, targets
+
 def convert_to_weight_matrix(source:int, my_list:list, w_group1:float, w_group2:float) -> np.array:
     """
     Returns a matrix of size (source x len(my_list)).
@@ -304,8 +325,6 @@ def convert_to_movie(list_frames:list, height:int, width:int, filePathName:str, 
     :type num_frames: int
 
     """
-
-
     base_matrix = np.zeros((width, height, 4))
     base_matrix[:, :, 3] = 255 * np.ones((width, height))
 
@@ -315,12 +334,10 @@ def convert_to_movie(list_frames:list, height:int, width:int, filePathName:str, 
             base_matrix[:,:,1] = frame
             for _ in range(num_frames):
                 vidwriter.write(base_matrix)
+    return base_matrix
 
 
-######################### Plotting functions #########################
-
-
-###### Network Structure ######
+###### Plot Network Structure ######
 
 def plot_different_distances(modelClass):
     """
@@ -520,8 +537,6 @@ def reshape_spiking_times_(my_spikemon: SpikeMonitor,  my_spiking_index : int = 
 
     return result, argmin_, argmax_
 
-
-
 def reshape_spiking_times(my_spikemon:SpikeMonitor, spiking_index:int=0, lower_threshold:float=0, upper_threshold=np.infty) -> Tuple[list, int, int]:
     """
     Given a SpikeMonitor object, returns a list of floats and nans, that represent the spike timing of the cells.
@@ -664,7 +679,7 @@ def video_spike_times(modelClass, spiking_index:int =0, filePathName:str ="./vid
                     Excitatory_matrix[np.int(modelClass.PC.y[n] / meter) - np.int(modelClass.PC.y[i] / meter) - 1, np.int(modelClass.PC.x[i] / meter) - 1] = variable
                 list_frames.append(Excitatory_matrix)
 
-    convert_to_movie(list_frames,  height=height,width=width, filePathName=filePathName)
+    convert_to_movie(list_frames,  height=height,width= width, filePathName=filePathName)
 
     return list_frames, height, width
 
@@ -867,7 +882,7 @@ def plot_voltages_PC(modelClass, plot_last_first : bool =True, new_indices : lis
     ylabel("Voltage", rotation='vertical')
     show()
 
-def plot_voltages_other_types(modelClass, type_list=['R','N', 'INH'], my_indices=[0]):
+def plot_voltages_other_types(modelClass, type_list=['R','N', 'INH'], my_indices=[0], plot_last_first=True):
     """
     Plot the voltage of some cells of type given in the list type_list.
     :param modelClass: Network model
@@ -885,10 +900,25 @@ def plot_voltages_other_types(modelClass, type_list=['R','N', 'INH'], my_indices
 
     for type_ in type_list:
         my_title = my_title + type_ + ' '
-        if type_ == 'INH':
+
+        if type_ == 'threshold':
             for i in my_indices:
-                my_plot = plot(modelClass.MINH.t / ms, modelClass.MINH.v[i], label='INH' + str(i))
-            plot(modelClass.INH_all_values['t'][0] / ms, modelClass.INH_all_values['v'][0], 'o', color=my_plot[0].get_color())
+                my_plot = plot(modelClass.Mthreshold.t / ms, modelClass.Mthreshold.h[i],
+                               label='Threshold for PC ' + str(i) + 'cell.')
+
+            # plot(modelClass.MthresholdG.t / ms, modelClass.MthresholdG.h[0], label='Threshold for G cell.')
+        elif type_ == 'weights':
+            plot(modelClass.weights[0].t / ms, modelClass.weights[0].w, label='Weight[' + str(0) + ']')
+            if modelClass.model == "FairhallModel":
+                plot(modelClass.weights[0].t / ms, modelClass.weights[0].w, label='Weight in the trajectory')
+
+                plot(modelClass.weights2[0].t / ms, modelClass.weights2[0].w, label='Weight outside the trajectory')
+
+
+        elif type_ == 'INH':
+                for i in my_indices:
+                    my_plot = plot(modelClass.MINH.t / ms, modelClass.MINH.v[i], label='INH' + str(i))
+                plot(modelClass.INH_all_values['t'][0] / ms, modelClass.INH_all_values['v'][0], 'o', color=my_plot[0].get_color())
 
         elif type_ == 'N':
             for i in my_indices:
@@ -900,19 +930,16 @@ def plot_voltages_other_types(modelClass, type_list=['R','N', 'INH'], my_indices
             plot(modelClass.R_all_values['t'][0] / ms, modelClass.R_all_values['v'][0], 'o',
                  color=my_plot[0].get_color())
         elif type_ == 'PC':
-            plot_voltages_PC(modelClass,new_indices=my_indices)
+            plot_voltages_PC(modelClass,new_indices=my_indices, plot_last_first=plot_last_first)
 
-        elif type_ == 'threshold':
-            for i in my_indices:
-                my_plot = plot(modelClass.Mthreshold.t / ms, modelClass.Mthreshold.h[i], label='Threshold for PC '+str(i)+ 'cell.')
-            #plot(modelClass.MthresholdG.t / ms, modelClass.MthresholdG.h[0], label='Threshold for G cell.')
         else:
             raise ValueError("Type must be 'PC', 'R' , 'INH', 'threshold' or 'N' ")
 
     title(my_title)
     xlabel("Time in ms")
     ylabel("Voltage", rotation='vertical')
-    legend()
+    if len(my_indices) <= 5 :
+        legend()
     show()
 
 def add_params(params, rec_weight=4.5, ext_weight=0.5, R_weight=0.4, inh_weight_pi=0.02, inh_weight_ip=0.01):
@@ -949,7 +976,7 @@ def create_trajectory_matrix(file_path_name:str = 'S_inputs.npy', num_ext_neuron
     result = convert_matrix_pos_to_indices(num_ext_neurons, trajectory, rows=20, cols=30)
     return result
 
-def plot_run(params, model="FairhallModel", my_duration=100, record_=True):
+def plot_run(params, model="FairhallModel", plasticity=True, my_duration=100, record_=True, plot_last_first=False):
     """
     Runs the network and plots some 1- Pyramidal cells activity 2- The spike times with gradient color
     :param params: parameters necessary to the construction of the model
@@ -963,9 +990,9 @@ def plot_run(params, model="FairhallModel", my_duration=100, record_=True):
     """
     start_scope()
 
-    fm1 = Model(params, model=model)
+    fm1 = Model(params, model=model, plasticity=plasticity)
 
-    fm1.run(duration=my_duration * ms, show_PC=True, show_other=False, record_=record_)
+    fm1.run(duration=my_duration * ms, show_PC=True, show_other=False, record_=record_, plot_last_first=plot_last_first)
 
     plot_spike_times(fm1, 0, plot_distribution=False)
 
@@ -1035,3 +1062,124 @@ def explore_hyperparameters(my_dict:dict, step:list, model:str, trajectory, n:in
     visualize_hyperparameters(var_spikes_outside_trajectory, my_extent, "var_spikes_outside_trajectory")
 
     return num_spiking_cells, mean_spike, var_spike_times, num_spiking_outside_trajectory, mean_spikes_outside_traj, var_spikes_outside_trajectory
+
+
+
+
+def time_me(func):
+    def wrapper(*args, **kwargs):
+        t = time()
+        print("Started", func.__name__)
+        result = func(*args, **kwargs)
+        print("Finished", func.__name__, "in", time() - t)
+        return result
+    return wrapper
+
+
+def test_(spikemon, modelClass, filePathName:str = "./video_spikes.mp4", simTime=100, nBins=5):
+
+    if not modelClass.has_run:
+        raise ValueError("No spiking thus cannot compute the spike times")
+
+    n = modelClass.p['rows'] * modelClass.p['cols'] - 1
+
+
+    height = np.int(modelClass.PC.x[n] / meter)
+    width = np.int(modelClass.PC.y[n] / meter)
+
+    list_frames = []
+    nX = modelClass.p['rows']
+    nY = modelClass.p['cols']
+
+    resArr, t = spike_times_to_matrix(modelClass, spikemon, nX, nY, 0 * ms, simTime * ms, nBins)
+
+    return resArr, t
+
+@time_me
+def spike_times_to_matrix(modelClass, spikeMon, nX, nY, startTime, endTime, nBins):
+
+    n = nX * nY -1
+    height = np.int(modelClass.PC.x[n] / meter)
+    width = np.int(modelClass.PC.y[n] / meter)
+
+
+    resArr = np.zeros((width, height, nBins))
+    tStep = float((endTime - startTime) / nBins)
+
+    coord1Dto2D = lambda i: (np.int(modelClass.PC.y[n] / meter) - np.int(modelClass.PC.y[i] / meter) - 1, np.int(modelClass.PC.x[i] / meter) - 1)
+    time2bin = lambda t: int((t - startTime) / tStep)
+
+    for iNeuron, tList in spikeMon.all_values()['t'].items():
+        x, y = coord1Dto2D(iNeuron)
+
+        for t in tList:
+            my_bin = time2bin(t)
+            resArr[x, y, my_bin] += 1
+
+    return resArr
+
+def new_spike_times(modelClass, filePathName:str = "./video_spikes.mp4", simTime=None, nBins=None):
+    """
+    Creates a video of the spiking events, with the function: reshape_spiking_times_.
+    Meaning it does not choose an index for the spiking time, but just gives it in firing order.
+    :param modelClass: Network model
+    :type modelClass: Either ThresholdModel or FairhallModel
+    :param filePathName: path where to upload the video
+    :type filePathName: str
+    :return: [list of frames, height, width]
+    :rtype: Tuple[list, int, int]
+    """
+
+
+    if not modelClass.has_run:
+        raise ValueError("No spiking thus cannot compute the spike times")
+
+    if simTime == None:
+        simTime = modelClass.duration / ms
+    print(simTime)
+    if nBins == None:
+        nBins = int(simTime)
+    print(nBins)
+
+    n = modelClass.p['rows'] * modelClass.p['cols'] - 1
+
+
+
+    height = np.int(modelClass.PC.x[n] / meter)
+    width = np.int(modelClass.PC.y[n] / meter)
+
+    list_frames = []
+    nX = modelClass.p['rows']
+    nY = modelClass.p['cols']
+
+    arr = 255 * spike_times_to_matrix(modelClass, modelClass.spikemon, nX , nY, 0 * ms, simTime * ms, nBins)
+
+    for i in range(arr.shape[2]):
+        list_frames.append(arr[:, :, i])
+
+    base_matrix = convert_to_movie(list_frames, height=height , width=width, filePathName=filePathName)
+
+    return base_matrix, height, width
+
+
+def create_movie_(modelClass,spiking_index : Union[int, None]= 0, file_path_name: str = "video_spikes.mp4" ):
+    """
+    Creates a Movie of the spiking times and shows it.
+    :param modelClass: Network model
+    :type modelClass: Either ThresholdModel or FairhallModel
+    :param spiking_index: Index of spikes shown in the video
+    :type spiking_index: int
+    :param file_path_name: file path name for the image that will create the connections
+    :type file_path_name: str
+    """
+    if spiking_index == None:
+        list_frames, height, width = test_spike_times(modelClass)
+    else:
+        list_frames, height, width = video_spike_times(modelClass, spiking_index=spiking_index)
+
+    convert_to_movie(list_frames, height, width, file_path_name)
+    width_ = 30 * modelClass.p['rows']
+    height_ = 30 * modelClass.p['cols']
+    Video.reload(file_path_name)
+    Video(file_path_name, width=width_, height=height_)
+    return file_path_name, width_, height_

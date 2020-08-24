@@ -227,13 +227,89 @@ def create_trajectory(show_=False):
         plt.title("S legend")
 
 
+
     np.save('S_inputs.npy', Sresult)
 
     result_S = functions.create_trajectory_matrix('S_inputs.npy')
 
-    return result_S
+
+    if np.count_nonzero(frame_img[:, :, 1] != 255) > 0:
+
+        # Red
+        Gresult = functions.reduce_matrix(frame_img[:, :, 1], 10)
+        np.save('G_inputs.npy', Gresult)
+        result_G = functions.create_trajectory_matrix('G_inputs.npy')
+
+        plt.imshow(frame_img[:, :, 1])
+        plt.title("Special input in the pyramidal cells")
+        plt.xlabel("meters")
+        plt.ylabel("meters")
+        plt.show()
+
+        if show_ :
+            plt.imshow(Gresult)
+            plt.title("G legend")
 
 
+        return result_S, result_G
+
+    else:
+        return result_S
+
+
+def create_trajectory_and_inputs(show_=False):
+
+    app = QApplication(sys.argv)
+    window = Window()
+    window.show()
+    app.exec()
+
+    window.getMatrix()
+    frame_img = window.img
+
+    window.default_save()
+    #Green
+    Sresult = functions.reduce_matrix(frame_img[:,:,0],10 )
+
+
+    plt.imshow(frame_img[:,:,0])
+    plt.title("Trajectory in the pyramidal cells")
+    plt.xlabel("meters")
+    plt.ylabel("meters")
+    plt.show()
+
+    if show_ :
+        plt.imshow(Sresult)
+        plt.title("S legend")
+
+
+
+    np.save('S_inputs.npy', Sresult)
+
+    result_S = functions.create_trajectory_matrix('S_inputs.npy')
+
+
+    if np.count_nonzero(frame_img[:, :, 1] != 255) == 0:
+        raise Warning("With this method, must add external inputs!")
+    else:
+        # Red
+        Gresult = functions.reduce_matrix(frame_img[:, :, 1], 10)
+        np.save('G_inputs.npy', Gresult)
+        result_G = functions.create_trajectory_matrix('G_inputs.npy')
+
+        plt.imshow(frame_img[:, :, 1])
+        plt.title("Special input in the pyramidal cells")
+        plt.xlabel("meters")
+        plt.ylabel("meters")
+        plt.show()
+
+        if show_ :
+            plt.imshow(Gresult)
+            plt.title("G legend")
+
+        result_S = result_S + result_G
+
+        return result_S, result_G
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
