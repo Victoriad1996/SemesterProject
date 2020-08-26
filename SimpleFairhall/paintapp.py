@@ -5,7 +5,7 @@ from PyQt5.QtCore import Qt, QPoint
 from PyQt5 import QtWidgets, QtCore
 import sys
 import numpy as np
-import functions
+import ConvertingFunctions, MainFunctions
 
 
 class Window(QMainWindow):
@@ -213,7 +213,7 @@ def create_trajectory(show_=False):
 
     window.default_save()
     #Green
-    Sresult = functions.reduce_matrix(frame_img[:,:,0],10 )
+    Sresult = ConvertingFunctions.reduce_matrix(frame_img[:,:,0],10 )
 
 
     plt.imshow(frame_img[:,:,0])
@@ -230,15 +230,15 @@ def create_trajectory(show_=False):
 
     np.save('S_inputs.npy', Sresult)
 
-    result_S = functions.create_trajectory_matrix('S_inputs.npy')
+    result_S = ConvertingFunctions.create_trajectory_matrix('S_inputs.npy')
 
 
     if np.count_nonzero(frame_img[:, :, 1] != 255) > 0:
 
         # Red
-        Gresult = functions.reduce_matrix(frame_img[:, :, 1], 10)
+        Gresult = ConvertingFunctions.reduce_matrix(frame_img[:, :, 1], 10)
         np.save('G_inputs.npy', Gresult)
-        result_G = functions.create_trajectory_matrix('G_inputs.npy')
+        result_G = MainFunctions.create_trajectory_matrix('G_inputs.npy')
 
         plt.imshow(frame_img[:, :, 1])
         plt.title("Special input in the pyramidal cells")
@@ -269,7 +269,7 @@ def create_trajectory_and_inputs(show_=False):
 
     window.default_save()
     #Green
-    Sresult = functions.reduce_matrix(frame_img[:,:,0],10 )
+    Sresult = ConvertingFunctions.reduce_matrix(frame_img[:,:,0],10 )
 
 
     plt.imshow(frame_img[:,:,0])
@@ -286,16 +286,16 @@ def create_trajectory_and_inputs(show_=False):
 
     np.save('S_inputs.npy', Sresult)
 
-    result_S = functions.create_trajectory_matrix('S_inputs.npy')
+    result_S = MainFunctions.create_trajectory_matrix('S_inputs.npy')
 
 
     if np.count_nonzero(frame_img[:, :, 1] != 255) == 0:
         raise Warning("With this method, must add external inputs!")
     else:
         # Red
-        Gresult = functions.reduce_matrix(frame_img[:, :, 1], 10)
+        Gresult = ConvertingFunctions.reduce_matrix(frame_img[:, :, 1], 10)
         np.save('G_inputs.npy', Gresult)
-        result_G = functions.create_trajectory_matrix('G_inputs.npy')
+        result_G = MainFunctions.create_trajectory_matrix('G_inputs.npy')
 
         plt.imshow(frame_img[:, :, 1])
         plt.title("Special input in the pyramidal cells")
@@ -319,9 +319,9 @@ if __name__ == "__main__":
     frame_img = window.img
     window.default_save()
     #Red
-    Gresult = functions.reduce_matrix(frame_img[:, :, 1], 10)
+    Gresult = ConvertingFunctions.reduce_matrix(frame_img[:, :, 1], 10)
     #Green
-    Sresult = functions.reduce_matrix(frame_img[:,:,0],10 )
+    Sresult = ConvertingFunctions.reduce_matrix(frame_img[:,:,0],10 )
 
 
     plt.imshow(Gresult)
