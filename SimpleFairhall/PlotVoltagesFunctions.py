@@ -109,6 +109,31 @@ def plot_voltages_mean_other_types(modelClass, type_list=['INH', 'threshold', 'w
     legend()
     show()
 
+def plot_threshold_mean_trajectory(modelClass):
+    """
+    Plot the mean voltage of the cells inside and outside of the trajectory.
+    :param modelClass: Network model
+    :type modelClass: Either ThresholdModel or FairhallModel
+    """
+
+    if not modelClass.has_run:
+        raise ValueError("Cannot plot if hasn't ran")
+
+    my_title = 'Voltage of '
+    indices_trajectory = ConvertingFunctions.convert_list_to_threshold(modelClass.p['trajectory'][0, :], 1, 0)
+
+    mean_PC_traj = np.mean([modelClass.MM[i].v for i in modelClass.MM.record if indices_trajectory[i] == 1], axis=0)
+    plot(modelClass.MM.t / ms, mean_PC_traj, label='PC mean cells trajectory.')
+
+    mean_PC_out_traj = np.mean([modelClass.MM[i].v for i in modelClass.MM.record if indices_trajectory[i] == 0], axis=0)
+    plot(modelClass.MPC.t / ms, mean_PC_out_traj, label='PC mean cells outside trajectory.')
+
+    title(my_title)
+    xlabel("Time in ms")
+    ylabel("Voltage", rotation='vertical')
+    legend()
+    show()
+
 def plot_voltages_mean_trajectory(modelClass):
     """
     Plot the mean voltage of the cells inside and outside of the trajectory.

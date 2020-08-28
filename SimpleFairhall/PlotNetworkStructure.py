@@ -24,7 +24,7 @@ def plot_different_distances(modelClass):
 
 
 # Visualise connectivity of a group of synapses given in parameter. Represented by vertices and edges.
-def visualise_connectivity(S : Synapses, mylegend:str):
+def visualise_connectivity(S : Synapses, mylegend:str, size:int = 10):
     """
     Visualise the connectivity of the synapses. Between the source neurons and target neurons.
     :param S: Synapses
@@ -34,23 +34,27 @@ def visualise_connectivity(S : Synapses, mylegend:str):
     """
     Ns = len(S.source)
     Nt = len(S.target)
-    figure(figsize=(10, 4))
+    figure(figsize=(20, 8))
     subplot(121)
     plot(zeros(Ns), arange(Ns), 'ok', ms=10)
     plot(ones(Nt), arange(Nt), 'ok', ms=10)
     for i, j in zip(S.i, S.j):
-        plot([0, 1], [i, j], '-k')
+        plot([0, 1], [2 * i, 2 * j], '-k')
         #, linewidth=S.w[i, j][0]
-    xticks([0, 1], ['Source', 'Target'])
-    ylabel('Neuron index')
+    xticks([0, 1], ['Source', 'Target'], size=size)
+    yticks(size=size)
+    ylabel('Neuron index', size=size)
     xlim(-0.1, 1.1)
     ylim(-1, max(Ns, Nt))
     subplot(122)
     plot(S.i, S.j, 'ok')
     xlim(-1, Ns)
     ylim(-1, Nt)
-    xlabel('Source neuron index')
-    ylabel('Target neuron index', rotation='vertical')
+
+    xticks(size=size)
+    yticks(size=size)
+    xlabel('Source neuron index', size=size)
+    ylabel('Target neuron index', rotation='vertical', size=size)
     suptitle(mylegend)
     show()
 
