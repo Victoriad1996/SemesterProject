@@ -1,11 +1,12 @@
-from brian2 import*
+from brian2 import *
 import numpy as np
 from typing import Tuple
 
 from opencvtry import cvWriter
 
-######################## Converting functions ##########################""
-def reduce_matrix(my_matrix : np.array, divisor: int) -> np.array:
+
+######################## Converting functions ##########################
+def reduce_matrix(my_matrix: np.array, divisor: int) -> np.array:
     """
     Reduces a matrix (takes 1/divcreate_trajectory_matrixisor of its elements).
     :param my_matrix: A matrix
@@ -20,11 +21,11 @@ def reduce_matrix(my_matrix : np.array, divisor: int) -> np.array:
     result = np.zeros((rows, cols))
     for i in range(rows):
         for j in range(cols):
-
-            result[i,j] = my_matrix[i * divisor, j * divisor]
+            result[i, j] = my_matrix[i * divisor, j * divisor]
     return result
 
-def convert_matrix_pos_to_indices(number:int, my_matrix:np.array, rows : int, cols:int) -> np.array:
+
+def convert_matrix_pos_to_indices(number: int, my_matrix: np.array, rows: int, cols: int) -> np.array:
     """
     Takes a matrix and Will give the returns a matrix with column[i]= 1 if the element on the ith position in the
     matrix is greater than 1. Or 0 otherwise.
@@ -40,15 +41,16 @@ def convert_matrix_pos_to_indices(number:int, my_matrix:np.array, rows : int, co
     :return:Matrix with column[i] is 1 if i is in the trajectory, 0 otherwise
     :rtype:np.array
     """
-   # my_indices = []
+    # my_indices = []
     result = np.zeros((number, rows * cols))
     for i in range(rows * cols):
-        if my_matrix[i%rows, i//rows] > 0:
-            #my_indices.append(i)
-            result[:,i] = np.ones(number)
+        if my_matrix[i % rows, i // rows] > 0:
+            # my_indices.append(i)
+            result[:, i] = np.ones(number)
     return result
 
-def convert_list_to_threshold(my_list:list, threshold_trajectory:float, threshold_out:float) -> list:
+
+def convert_list_to_threshold(my_list: list, threshold_trajectory: float, threshold_out: float) -> list:
     """
     Creates a new list, for positive elements it takes the value threshold_trajectory, otherwise threshold_out.
     :param my_list: Any list of floats. Strictly positive elements represent the ones inside the trajectory,
@@ -63,11 +65,12 @@ def convert_list_to_threshold(my_list:list, threshold_trajectory:float, threshol
     """
     new_list = [threshold_out] * len(my_list)
     for i in range(len(my_list)):
-        if my_list[i]>0:
+        if my_list[i] > 0:
             new_list[i] = threshold_trajectory
     return new_list
 
-def convert_matrix_to_source_target(my_matrix : np.array) -> Tuple[np.array, np.array]:
+
+def convert_matrix_to_source_target(my_matrix: np.array) -> Tuple[np.array, np.array]:
     """
     Converts a matrix into two arrays that give the indices of the non zero elements.
     (Source[i], Target[i]) gives the position of a non zero element.
@@ -83,7 +86,8 @@ def convert_matrix_to_source_target(my_matrix : np.array) -> Tuple[np.array, np.
     targets = np.array(targets)
     return sources, targets
 
-def convert_neg_matrix_to_source_target(my_matrix : np.array) -> Tuple[np.array, np.array]:
+
+def convert_neg_matrix_to_source_target(my_matrix: np.array) -> Tuple[np.array, np.array]:
     """
     Converts a matrix into two arrays that give the indices of the non zero elements.
     (Source[i], Target[i]) gives the position of a non zero element.
@@ -101,7 +105,8 @@ def convert_neg_matrix_to_source_target(my_matrix : np.array) -> Tuple[np.array,
     targets = np.array(targets)
     return sources, targets
 
-def convert_to_weight_matrix(source:int, my_list:list, w_group1:float, w_group2:float) -> np.array:
+
+def convert_to_weight_matrix(source: int, my_list: list, w_group1: float, w_group2: float) -> np.array:
     """
     Returns a matrix of size (source x len(my_list)).
     With row[i] = w_group1 if my_list[i] > 0
@@ -119,14 +124,15 @@ def convert_to_weight_matrix(source:int, my_list:list, w_group1:float, w_group2:
     """
     my_matrix = np.zeros([source, len(my_list)])
     for i in range(len(my_list)):
-        if my_list[i]>0:
-            my_matrix[:,i] = w_group1
+        if my_list[i] > 0:
+            my_matrix[:, i] = w_group1
         else:
-            my_matrix[:,i] = w_group2
+            my_matrix[:, i] = w_group2
 
     return my_matrix
 
-def convert_to_movie(list_frames:list, height:int, width:int, filePathName:str, num_frames:int = 10):
+
+def convert_to_movie(list_frames: list, height: int, width: int, filePathName: str, num_frames: int = 10):
     """
     Given a list of frames, converts it into a movie.
     :param list_frames: List of frames (matrices).
@@ -147,8 +153,7 @@ def convert_to_movie(list_frames:list, height:int, width:int, filePathName:str, 
     FrameDim = (width, height)
     with cvWriter(filePathName, FrameDim) as vidwriter:
         for frame in list_frames:
-            base_matrix[:,:,1] = frame
+            base_matrix[:, :, 1] = frame
             for _ in range(num_frames):
                 vidwriter.write(base_matrix)
     return base_matrix
-

@@ -71,7 +71,6 @@ class Window(QMainWindow):
         fileMenu.addAction(getMatrixAction)
         getMatrixAction.triggered.connect(self.getMatrix)
 
-
         redAction = QAction(QIcon("icons/red.png"), "G inputs", self)
         redAction.setShortcut("Ctrl+R")
         brushColor.addAction(redAction)
@@ -82,17 +81,14 @@ class Window(QMainWindow):
         brushColor.addAction(greenAction)
         greenAction.triggered.connect(self.greenColor)
 
-
-
     def redColor(self):
         self.brushColor = Qt.red
 
     def greenColor(self):
         self.brushColor = Qt.green
 
-
     def reSetSquare(self):
-        self.square =[]
+        self.square = []
 
     def addSquare(self, point):
         if len(self.square) < 2:
@@ -115,7 +111,7 @@ class Window(QMainWindow):
 
     def setBrushSize(self):
         newSize, success = QtWidgets.QInputDialog.getInt(self, "Scribble", "Select pen width:",
-                                                          self.brushSize, 1, 50, 1)
+                                                         self.brushSize, 1, 50, 1)
         if success:
             self.brushSize = newSize
 
@@ -149,7 +145,7 @@ class Window(QMainWindow):
             painter.setPen(QPen(self.brushColor, self.brushSize, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
             if self.mode == "Scribble":
                 painter.drawLine(self.lastPoint, position)
-                #print(QPoint(position))
+                # print(QPoint(position))
                 self.lastPoint = position
             self.update()
 
@@ -157,7 +153,6 @@ class Window(QMainWindow):
             self.reSetSquare()
             self.node = None
             self.drawing = False
-
 
     def mouseReleaseEvent(self, event):
         if event.button == Qt.LeftButton:
@@ -168,7 +163,8 @@ class Window(QMainWindow):
         canvasPainter.drawImage(self.rect(), self.image, self.image.rect())
 
     def save(self):
-        filePath, filter_ = QFileDialog.getSaveFileName(self, "Save Image", "", "PNG(*.png);; JPEG(*.jpg *.jpeg);; ALL Files(*.*)")
+        filePath, filter_ = QFileDialog.getSaveFileName(self, "Save Image", "",
+                                                        "PNG(*.png);; JPEG(*.jpg *.jpeg);; ALL Files(*.*)")
         if filePath == "":
             return
         self.image.save(filePath)
@@ -197,12 +193,11 @@ class Window(QMainWindow):
         b = src.bits()
         b.setsize(self.height() * self.width() * 4)
         arr = np.frombuffer(b, np.uint8).reshape((self.height(), self.width(), 4))
-        arr = arr[:, :, [2,1,0,3]]  # No clue why, but QImage seems to be not RGB but BGR
-        return(arr)
+        arr = arr[:, :, [2, 1, 0, 3]]  # No clue why, but QImage seems to be not RGB but BGR
+        return (arr)
 
 
 def create_trajectory(show_=False):
-
     app = QApplication(sys.argv)
     window = Window()
     window.show()
@@ -212,29 +207,24 @@ def create_trajectory(show_=False):
     frame_img = window.img
 
     window.default_save()
-    #Green
-    Sresult = ConvertingFunctions.reduce_matrix(frame_img[:,:,0],10 )
+    # Green
+    Sresult = ConvertingFunctions.reduce_matrix(frame_img[:, :, 0], 10)
 
-
-    plt.imshow(frame_img[:,:,0])
+    plt.imshow(frame_img[:, :, 0])
     plt.title("Trajectory in the pyramidal cells")
     plt.xlabel("meters")
     plt.ylabel("meters")
     plt.show()
 
-    if show_ :
+    if show_:
         plt.imshow(Sresult)
         plt.title("S legend")
 
-
-
     np.save('S_inputs.npy', Sresult)
 
-    result_S = ConvertingFunctions.create_trajectory_matrix('S_inputs.npy')
-
+    result_S = MainFunctions.create_trajectory_matrix('S_inputs.npy')
 
     if np.count_nonzero(frame_img[:, :, 1] != 255) > 0:
-
         # Red
         Gresult = ConvertingFunctions.reduce_matrix(frame_img[:, :, 1], 10)
         np.save('G_inputs.npy', Gresult)
@@ -246,10 +236,9 @@ def create_trajectory(show_=False):
         plt.ylabel("meters")
         plt.show()
 
-        if show_ :
+        if show_:
             plt.imshow(Gresult)
             plt.title("G legend")
-
 
         return result_S, result_G
 
@@ -258,7 +247,6 @@ def create_trajectory(show_=False):
 
 
 def create_trajectory_and_inputs(show_=False):
-
     app = QApplication(sys.argv)
     window = Window()
     window.show()
@@ -268,26 +256,22 @@ def create_trajectory_and_inputs(show_=False):
     frame_img = window.img
 
     window.default_save()
-    #Green
-    Sresult = ConvertingFunctions.reduce_matrix(frame_img[:,:,0],10 )
+    # Green
+    Sresult = ConvertingFunctions.reduce_matrix(frame_img[:, :, 0], 10)
 
-
-    plt.imshow(frame_img[:,:,0])
+    plt.imshow(frame_img[:, :, 0])
     plt.title("Trajectory in the pyramidal cells")
     plt.xlabel("meters")
     plt.ylabel("meters")
     plt.show()
 
-    if show_ :
+    if show_:
         plt.imshow(Sresult)
         plt.title("S legend")
-
-
 
     np.save('S_inputs.npy', Sresult)
 
     result_S = MainFunctions.create_trajectory_matrix('S_inputs.npy')
-
 
     if np.count_nonzero(frame_img[:, :, 1] != 255) == 0:
         raise Warning("With this method, must add external inputs!")
@@ -303,13 +287,14 @@ def create_trajectory_and_inputs(show_=False):
         plt.ylabel("meters")
         plt.show()
 
-        if show_ :
+        if show_:
             plt.imshow(Gresult)
             plt.title("G legend")
 
         result_S = result_S + result_G
 
         return result_S, result_G
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -318,11 +303,10 @@ if __name__ == "__main__":
     app.exec()
     frame_img = window.img
     window.default_save()
-    #Red
+    # Red
     Gresult = ConvertingFunctions.reduce_matrix(frame_img[:, :, 1], 10)
-    #Green
-    Sresult = ConvertingFunctions.reduce_matrix(frame_img[:,:,0],10 )
-
+    # Green
+    Sresult = ConvertingFunctions.reduce_matrix(frame_img[:, :, 0], 10)
 
     plt.imshow(Gresult)
     plt.title("G results")
@@ -332,5 +316,3 @@ if __name__ == "__main__":
 
     np.save('G_inputs.npy', Gresult)
     np.save('S_inputs.npy', Sresult)
-
-

@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 
+
 class cvWriter:
     # Define the codec and create VideoWriter object
 
@@ -24,4 +25,3 @@ class cvWriter:
     # Write matrix frame to file
     def write(self, mat):
         self._out.write(mat.astype(np.uint8))
-

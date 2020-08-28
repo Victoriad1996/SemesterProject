@@ -1,8 +1,8 @@
 from brian2 import*
-
 import BasicFunctions
-###### Plot Network Structure ######
 
+
+###### Plot Network Structure ######
 def plot_different_distances(modelClass):
     """
     Plot the distribution of different distances. Helps for construction of the network.

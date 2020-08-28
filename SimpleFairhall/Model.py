@@ -546,7 +546,7 @@ class Model:
 
         # TODO: Find better way to record spike moments
 
-    def run(self, duration=50 * ms, show_PC=False, show_other=False, record_=True, plot_last_first=False):
+    def run(self, duration=50 * ms, show_PC=False, show_other=False, record_=True):
         """
         Run the simulation, and record the activity of the desired cells.
 
@@ -557,18 +557,18 @@ class Model:
         :param show_other: Ask for plotting the activity of different cells.
         :type show_other: bool
         """
-        self.plot_last_first = plot_last_first
         self.duration = duration
         # Records for all indices, used for recording spiking times.
         # TODO: Find better way to record spike moments
         self.MPC = StateMonitor(self.PC, 'v', record=self.my_indices)
-        if plot_last_first:
-            self.MM = StateMonitor(self.PC, 'v', record=True)
 
         # Records the spikes of Pyramidal cells.
         self.spikemon = SpikeMonitor(self.PC, variables='v', record=True)
+        self.record_ = record_
 
         if record_:
+
+            self.MM = StateMonitor(self.PC, 'v', record=True)
             # Threshold
             self.Mthreshold = StateMonitor(self.PC, 'h', record=True)
 

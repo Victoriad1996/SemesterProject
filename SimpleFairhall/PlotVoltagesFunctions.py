@@ -8,8 +8,6 @@ def plot_voltages_PC(modelClass, new_indices : list =[]):
     Plot the voltage of some Pyramidal cells.
     :param modelClass: Network model
     :type modelClass: Either ThresholdModel or FairhallModel
-    :param plot_last_first: If plot the last and first spike.
-    :type plot_last_first: bool
     :param new_indices: list of indices of cells for which we want to see the voltage.
     :type new_indices: list
     """
@@ -28,7 +26,7 @@ def plot_voltages_PC(modelClass, new_indices : list =[]):
         if index in list(modelClass.spikemon.i):
             plot(modelClass.PC_all_values['t'][index] / ms, modelClass.PC_all_values['v'][index], 'o', color=my_plot[0].get_color())
 
-    if modelClass.plot_last_first:
+    if modelClass.record_:
         first_plot = plot(modelClass.MM.t / ms, modelClass.MM.v[modelClass.PC_first_spike], label='First Spike' + str(modelClass.PC_first_spike))
 
         plot(modelClass.PC_all_values['t'][modelClass.PC_first_spike] / ms, modelClass.PC_all_values['v'][modelClass.PC_first_spike], 'o',
@@ -45,13 +43,11 @@ def plot_voltages_PC(modelClass, new_indices : list =[]):
 
 def plot_voltages_mean_other_types(modelClass, type_list=['INH', 'threshold', 'weights', 'PC']):
     """
-    Plot the voltage of some cells of type given in the list type_list.
+    Plot the voltage mean of the cells of type given in the list type_list.
     :param modelClass: Network model
     :type modelClass: Either ThresholdModel or FairhallModel
     :param type_list: list of the type we want to plot
     :type type_list: list[str]
-    :param new_indices: list of indices of cells for which we want to see the voltage.
-    :type new_indices: list
     """
 
     if not modelClass.has_run:
@@ -97,7 +93,7 @@ def plot_voltages_mean_other_types(modelClass, type_list=['INH', 'threshold', 'w
             plot(modelClass.MR.t / ms, mean_random, label='Random mean cells.')
 
         elif type_ == 'PC':
-            if modelClass.plot_last_first:
+            if modelClass.record_:
                 mean_PC = np.mean([modelClass.MM[i].v for i in modelClass.MM.record], axis=0)
                 plot(modelClass.MM.t / ms, mean_PC, label='PC mean cells.')
             else:
@@ -105,7 +101,7 @@ def plot_voltages_mean_other_types(modelClass, type_list=['INH', 'threshold', 'w
                 plot(modelClass.MPC.t / ms, mean_PC, label='PC mean cells.')
 
         else:
-            raise ValueError("Type must be 'PC', 'R' , 'INH', 'threshold' or 'N' ")
+            raise ValueError("Type must be 'PC', 'R' , 'INH', 'threshold' or 'weights' ")
 
     title(my_title)
     xlabel("Time in ms")
@@ -115,13 +111,9 @@ def plot_voltages_mean_other_types(modelClass, type_list=['INH', 'threshold', 'w
 
 def plot_voltages_mean_trajectory(modelClass):
     """
-    Plot the voltage of some cells of type given in the list type_list.
+    Plot the mean voltage of the cells inside and outside of the trajectory.
     :param modelClass: Network model
     :type modelClass: Either ThresholdModel or FairhallModel
-    :param type_list: list of the type we want to plot
-    :type type_list: list[str]
-    :param new_indices: list of indices of cells for which we want to see the voltage.
-    :type new_indices: list
     """
 
     if not modelClass.has_run:
@@ -143,6 +135,13 @@ def plot_voltages_mean_trajectory(modelClass):
     show()
 
 def verify_indices(modelClass):
+    """
+    Just a function to verify the function ConvertingFunctions.convert_list_to_threshold, by plotting them on the plane.
+    :param modelClass: Network model
+    :type modelClass: Either ThresholdModel or FairhallModel
+    :return:
+    :rtype:
+    """
 
     indices_trajectory = ConvertingFunctions.convert_list_to_threshold(modelClass.p['trajectory'][0, :], 1, 0)
     for i in range(len(indices_trajectory)):

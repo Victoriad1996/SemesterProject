@@ -40,7 +40,7 @@ def create_trajectory_matrix(file_path_name:str = 'S_inputs.npy', num_ext_neuron
     result = ConvertingFunctions.convert_matrix_pos_to_indices(num_ext_neurons, trajectory, rows=20, cols=30)
     return result
 
-def plot_run(params, model="FairhallModel", plasticity=True, my_duration=100, record_=True, plot_last_first=False):
+def plot_run(params, model="FairhallModel", plasticity=True, my_duration=100, record_=True):
     """
     Runs the network and plots some 1- Pyramidal cells activity 2- The spike times with gradient color
     :param params: parameters necessary to the construction of the model
@@ -56,7 +56,7 @@ def plot_run(params, model="FairhallModel", plasticity=True, my_duration=100, re
 
     fm1 = Model(params, model=model, plasticity=plasticity)
 
-    fm1.run(duration=my_duration * ms, show_PC=True, show_other=False, record_=record_, plot_last_first=plot_last_first)
+    fm1.run(duration=my_duration * ms, show_PC=True, show_other=False, record_=record_)
 
     CellActivityFunctions.plot_spike_times(fm1, 0, plot_distribution=False)
 
